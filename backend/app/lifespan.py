@@ -39,7 +39,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     from backend.app.persistence.database import close_db
+    from backend.app.siem.registry import get_provider_registry
 
+    await get_provider_registry().close_all()
     await close_db()
 
     logger.info("SENTINEL AI shutting down.")

@@ -107,3 +107,8 @@ class ProviderInterface(ABC):
     async def get_field_mappings(self) -> dict[str, str]:
         """Return field name → field type mappings for the provider."""
         ...
+
+    async def close(self) -> None:
+        """Close provider connections if applicable."""
+        pass
+
