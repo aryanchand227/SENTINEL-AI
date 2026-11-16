@@ -44,6 +44,7 @@ class EventOutcome(StrEnum):
 
 class EventSeverity(int, Enum):
     """Numeric severity on ECS scale: 0=informational, 25=low, 50=medium, 75=high, 100=critical."""
+
     INFORMATIONAL = 0
     LOW = 25
     MEDIUM = 50
@@ -57,6 +58,7 @@ class DataMode(StrEnum):
 
 
 # --- Nested ECS-compatible field groups ---
+
 
 class SourceFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -144,6 +146,7 @@ class SentinelMetadata(BaseModel):
 
 class EventFields(BaseModel):
     """Core event descriptor fields."""
+
     model_config = ConfigDict(extra="forbid")
     id: str
     kind: EventKind = EventKind.EVENT
@@ -163,6 +166,7 @@ class SecurityEvent(BaseModel):
     ECS-compatible field names. Optional fields modeled correctly.
     Preserves source provenance via sentinel metadata.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     event: EventFields

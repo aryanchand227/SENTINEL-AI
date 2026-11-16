@@ -171,31 +171,30 @@ class SyntheticProvider(ProviderInterface):
                     if val is not None:
                         counter[str(val)] += 1
                 buckets = [
-                    AggregationBucket(key=k, doc_count=c)
-                    for k, c in counter.most_common(agg_size)
+                    AggregationBucket(key=k, doc_count=c) for k, c in counter.most_common(agg_size)
                 ]
                 agg_results.append(AggregationResult(name=agg_name, buckets=buckets))
 
             elif agg_type == "value_count":
                 count = sum(1 for e in matched if _get_nested_value(e, agg_field) is not None)
-                agg_results.append(AggregationResult(
-                    name=agg_name,
-                    buckets=[AggregationBucket(key="_count", doc_count=count)],
-                ))
+                agg_results.append(
+                    AggregationResult(
+                        name=agg_name,
+                        buckets=[AggregationBucket(key="_count", doc_count=count)],
+                    )
+                )
 
             elif agg_type == "date_histogram":
                 # Simple hourly bucketing for synthetic
                 from collections import defaultdict
+
                 buckets_dict: dict[str, int] = defaultdict(int)
                 for event in matched:
                     ts = event.timestamp
                     hour_key = ts.strftime("%Y-%m-%dT%H:00:00Z")
                     buckets_dict[hour_key] += 1
                 sorted_keys = sorted(buckets_dict.keys())
-                buckets = [
-                    AggregationBucket(key=k, doc_count=buckets_dict[k])
-                    for k in sorted_keys
-                ]
+                buckets = [AggregationBucket(key=k, doc_count=buckets_dict[k]) for k in sorted_keys]
                 agg_results.append(AggregationResult(name=agg_name, buckets=buckets))
 
         elapsed_ms = int((time.monotonic() - start_time) * 1000)

@@ -125,10 +125,12 @@ class TestSyntheticEventGenerator:
         gen = SyntheticEventGenerator(seed=42)
         events = gen.generate_all()
         ssh_failures = [
-            e for e in events
+            e
+            for e in events
             if e.event.action == "ssh_login"
             and e.event.outcome == EventOutcome.FAILURE
-            and e.source and e.source.ip == "192.168.1.100"
+            and e.source
+            and e.source.ip == "192.168.1.100"
         ]
         assert len(ssh_failures) == 20
 
@@ -137,16 +139,20 @@ class TestSyntheticEventGenerator:
         gen = SyntheticEventGenerator(seed=42)
         events = gen.generate_all()
         s2_fails = [
-            e for e in events
+            e
+            for e in events
             if e.event.action == "ssh_login"
             and e.event.outcome == EventOutcome.FAILURE
-            and e.source and e.source.ip == "10.0.0.55"
+            and e.source
+            and e.source.ip == "10.0.0.55"
         ]
         s2_success = [
-            e for e in events
+            e
+            for e in events
             if e.event.action == "ssh_login"
             and e.event.outcome == EventOutcome.SUCCESS
-            and e.source and e.source.ip == "10.0.0.55"
+            and e.source
+            and e.source.ip == "10.0.0.55"
         ]
         assert len(s2_fails) == 15
         assert len(s2_success) == 1
@@ -156,7 +162,8 @@ class TestSyntheticEventGenerator:
         gen = SyntheticEventGenerator(seed=42)
         events = gen.generate_all()
         benign = [
-            e for e in events
+            e
+            for e in events
             if e.event.severity == 0  # INFORMATIONAL
         ]
         assert len(benign) >= 3  # at least 3 benign logins + routine tasks

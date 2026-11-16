@@ -36,6 +36,7 @@ class ProviderHealthResult(BaseModel):
 
 class SearchRequest(BaseModel):
     """Provider-agnostic search request."""
+
     model_config = ConfigDict(extra="forbid")
 
     filters: list[dict[str, Any]] = Field(default_factory=list)
@@ -75,6 +76,7 @@ class AggregationResult(BaseModel):
 
 class ProviderSearchResult(BaseModel):
     """Result from any provider search — normalized events + metadata."""
+
     model_config = ConfigDict(extra="forbid")
 
     events: list[SecurityEvent] = Field(default_factory=list)

@@ -36,10 +36,12 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_filter_by_category(self, provider: SyntheticProvider) -> None:
         """Filter by event.category == authentication."""
-        result = await provider.search(SearchRequest(
-            filters=[{"field": "event.category", "operator": "eq", "value": "authentication"}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                filters=[{"field": "event.category", "operator": "eq", "value": "authentication"}],
+                page_size=200,
+            )
+        )
         assert result.metadata.total_hits > 0
         for e in result.events:
             assert e.event.category == EventCategory.AUTHENTICATION
@@ -47,10 +49,12 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_filter_by_outcome(self, provider: SyntheticProvider) -> None:
         """Filter by event.outcome == failure."""
-        result = await provider.search(SearchRequest(
-            filters=[{"field": "event.outcome", "operator": "eq", "value": "failure"}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                filters=[{"field": "event.outcome", "operator": "eq", "value": "failure"}],
+                page_size=200,
+            )
+        )
         assert result.metadata.total_hits > 0
         for e in result.events:
             assert e.event.outcome == EventOutcome.FAILURE
@@ -58,10 +62,12 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_filter_by_source_ip(self, provider: SyntheticProvider) -> None:
         """Filter by source.ip."""
-        result = await provider.search(SearchRequest(
-            filters=[{"field": "source.ip", "operator": "eq", "value": "192.168.1.100"}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                filters=[{"field": "source.ip", "operator": "eq", "value": "192.168.1.100"}],
+                page_size=200,
+            )
+        )
         assert result.metadata.total_hits == 20  # SSH brute force scenario 1
         for e in result.events:
             assert e.source is not None
@@ -70,10 +76,12 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_filter_by_severity_gte(self, provider: SyntheticProvider) -> None:
         """Filter by event.severity >= 75 (HIGH+)."""
-        result = await provider.search(SearchRequest(
-            filters=[{"field": "event.severity", "operator": "gte", "value": 75}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                filters=[{"field": "event.severity", "operator": "gte", "value": 75}],
+                page_size=200,
+            )
+        )
         assert result.metadata.total_hits > 0
         for e in result.events:
             assert e.event.severity >= 75
@@ -82,11 +90,13 @@ class TestSyntheticProviderSearch:
     async def test_time_range_filter(self, provider: SyntheticProvider) -> None:
         """Filter by time range."""
         base = datetime(2026, 11, 16, 0, 0, 0, tzinfo=UTC)
-        result = await provider.search(SearchRequest(
-            time_start=base - timedelta(hours=6),
-            time_end=base,
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                time_start=base - timedelta(hours=6),
+                time_end=base,
+                page_size=200,
+            )
+        )
         assert result.metadata.total_hits > 0
         for e in result.events:
             assert e.timestamp >= base - timedelta(hours=6)
@@ -95,14 +105,16 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_combined_filters(self, provider: SyntheticProvider) -> None:
         """Multiple filters applied together (AND)."""
-        result = await provider.search(SearchRequest(
-            filters=[
-                {"field": "event.category", "operator": "eq", "value": "authentication"},
-                {"field": "event.outcome", "operator": "eq", "value": "failure"},
-                {"field": "source.ip", "operator": "eq", "value": "10.0.0.55"},
-            ],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                filters=[
+                    {"field": "event.category", "operator": "eq", "value": "authentication"},
+                    {"field": "event.outcome", "operator": "eq", "value": "failure"},
+                    {"field": "source.ip", "operator": "eq", "value": "10.0.0.55"},
+                ],
+                page_size=200,
+            )
+        )
         assert result.metadata.total_hits == 15  # Scenario 2 failures only
 
     @pytest.mark.asyncio
@@ -125,21 +137,25 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_sort_ascending(self, provider: SyntheticProvider) -> None:
         """Events sorted by timestamp ascending."""
-        result = await provider.search(SearchRequest(
-            sort_field="@timestamp",
-            sort_order="asc",
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                sort_field="@timestamp",
+                sort_order="asc",
+                page_size=200,
+            )
+        )
         timestamps = [e.timestamp for e in result.events]
         assert timestamps == sorted(timestamps)
 
     @pytest.mark.asyncio
     async def test_terms_aggregation(self, provider: SyntheticProvider) -> None:
         """Terms aggregation on event.category."""
-        result = await provider.search(SearchRequest(
-            aggregations=[{"type": "terms", "field": "event.category", "name": "by_category"}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                aggregations=[{"type": "terms", "field": "event.category", "name": "by_category"}],
+                page_size=200,
+            )
+        )
         assert len(result.aggregations) == 1
         agg = result.aggregations[0]
         assert agg.name == "by_category"
@@ -150,10 +166,14 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_terms_aggregation_source_ip(self, provider: SyntheticProvider) -> None:
         """Terms aggregation on source.ip — top IPs."""
-        result = await provider.search(SearchRequest(
-            aggregations=[{"type": "terms", "field": "source.ip", "name": "top_ips", "size": 5}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                aggregations=[
+                    {"type": "terms", "field": "source.ip", "name": "top_ips", "size": 5}
+                ],
+                page_size=200,
+            )
+        )
         assert len(result.aggregations) == 1
         agg = result.aggregations[0]
         assert agg.name == "top_ips"
@@ -164,20 +184,26 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_value_count_aggregation(self, provider: SyntheticProvider) -> None:
         """Value count aggregation."""
-        result = await provider.search(SearchRequest(
-            aggregations=[{"type": "value_count", "field": "user.name", "name": "user_count"}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                aggregations=[{"type": "value_count", "field": "user.name", "name": "user_count"}],
+                page_size=200,
+            )
+        )
         assert len(result.aggregations) == 1
         assert result.aggregations[0].buckets[0].doc_count > 0
 
     @pytest.mark.asyncio
     async def test_date_histogram_aggregation(self, provider: SyntheticProvider) -> None:
         """Date histogram aggregation."""
-        result = await provider.search(SearchRequest(
-            aggregations=[{"type": "date_histogram", "field": "@timestamp", "name": "timeline"}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                aggregations=[
+                    {"type": "date_histogram", "field": "@timestamp", "name": "timeline"}
+                ],
+                page_size=200,
+            )
+        )
         assert len(result.aggregations) == 1
         agg = result.aggregations[0]
         assert agg.name == "timeline"
@@ -186,19 +212,23 @@ class TestSyntheticProviderSearch:
     @pytest.mark.asyncio
     async def test_empty_result_not_error(self, provider: SyntheticProvider) -> None:
         """No matching events returns empty result, not an error."""
-        result = await provider.search(SearchRequest(
-            filters=[{"field": "source.ip", "operator": "eq", "value": "1.2.3.4"}],
-        ))
+        result = await provider.search(
+            SearchRequest(
+                filters=[{"field": "source.ip", "operator": "eq", "value": "1.2.3.4"}],
+            )
+        )
         assert result.metadata.total_hits == 0
         assert len(result.events) == 0
 
     @pytest.mark.asyncio
     async def test_contains_filter(self, provider: SyntheticProvider) -> None:
         """Contains filter on message field."""
-        result = await provider.search(SearchRequest(
-            filters=[{"field": "message", "operator": "contains", "value": "malware"}],
-            page_size=200,
-        ))
+        result = await provider.search(
+            SearchRequest(
+                filters=[{"field": "message", "operator": "contains", "value": "malware"}],
+                page_size=200,
+            )
+        )
         assert result.metadata.total_hits >= 1
         for e in result.events:
             assert "malware" in (e.message or "").lower()

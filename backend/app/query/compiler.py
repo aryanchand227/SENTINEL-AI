@@ -22,11 +22,13 @@ class QueryCompiler:
         # Compile filters
         compiled_filters: list[dict[str, Any]] = []
         for f in spec.filters:
-            compiled_filters.append({
-                "field": f.field,
-                "operator": f.operator.value,
-                "value": f.value,
-            })
+            compiled_filters.append(
+                {
+                    "field": f.field,
+                    "operator": f.operator.value,
+                    "value": f.value,
+                }
+            )
 
         # Compile aggregations
         compiled_aggs: list[dict[str, Any]] = []

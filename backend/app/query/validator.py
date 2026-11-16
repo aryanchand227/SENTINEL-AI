@@ -35,6 +35,7 @@ class ValidationErrorDetail(BaseModel):
 
 class QueryValidationResult(BaseModel):
     """Result of SQS validation."""
+
     model_config = ConfigDict(extra="forbid")
 
     is_valid: bool

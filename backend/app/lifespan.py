@@ -31,6 +31,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure report storage directory exists
     settings.report_storage_path.mkdir(parents=True, exist_ok=True)
 
+    # Initialize database tables
+    from backend.app.persistence.database import init_db
+
+    await init_db()
+
     yield
+
+    from backend.app.persistence.database import close_db
+
+    await close_db()
 
     logger.info("SENTINEL AI shutting down.")

@@ -384,8 +384,7 @@ class SyntheticEventGenerator:
                     created=self._ts(hours_offset=-5, minutes_offset=3),
                 ),
                 message=(
-                    f"User {user['name']} added to Administrators group "
-                    f"on {target_host['name']}"
+                    f"User {user['name']} added to Administrators group on {target_host['name']}"
                 ),
                 source=SourceFields(ip=INTERNAL_IPS[2]),
                 user=UserFields(**user),

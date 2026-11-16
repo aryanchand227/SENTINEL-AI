@@ -96,11 +96,7 @@ class Settings(BaseSettings):
 
     @property
     def elasticsearch_index_patterns(self) -> list[str]:
-        return [
-            p.strip()
-            for p in self.elasticsearch_index_allowlist.split(",")
-            if p.strip()
-        ]
+        return [p.strip() for p in self.elasticsearch_index_allowlist.split(",") if p.strip()]
 
     @field_validator("app_secret_key", "jwt_secret_key")
     @classmethod
