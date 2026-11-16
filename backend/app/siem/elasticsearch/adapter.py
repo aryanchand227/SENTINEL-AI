@@ -94,22 +94,34 @@ def _normalize_es_hit(hit: dict[str, Any]) -> SecurityEvent:
 
     # Source & User & Host groups
     raw_src = source.get("source", {})
-    src_fields = SourceFields(
-        ip=raw_src.get("ip"),
-        port=raw_src.get("port"),
-    ) if raw_src else None
+    src_fields = (
+        SourceFields(
+            ip=raw_src.get("ip"),
+            port=raw_src.get("port"),
+        )
+        if raw_src
+        else None
+    )
 
     raw_user = source.get("user", {})
-    user_fields = UserFields(
-        name=raw_user.get("name"),
-        id=raw_user.get("id"),
-    ) if raw_user else None
+    user_fields = (
+        UserFields(
+            name=raw_user.get("name"),
+            id=raw_user.get("id"),
+        )
+        if raw_user
+        else None
+    )
 
     raw_host = source.get("host", {})
-    host_fields = HostFields(
-        name=raw_host.get("name"),
-        id=raw_host.get("id"),
-    ) if raw_host else None
+    host_fields = (
+        HostFields(
+            name=raw_host.get("name"),
+            id=raw_host.get("id"),
+        )
+        if raw_host
+        else None
+    )
 
     # Sentinel metadata
     meta = SentinelMetadata(

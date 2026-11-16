@@ -189,7 +189,7 @@ class ReportService:
         story.append(Spacer(1, 4))
 
         # Metadata banner
-        gen_time = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')
+        gen_time = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
         banner_text = (
             f"<b>Report ID:</b> {report_id} &nbsp;|&nbsp; "
             f"<b>Investigation:</b> {investigation_id} &nbsp;|&nbsp; "

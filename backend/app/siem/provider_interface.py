@@ -111,4 +111,3 @@ class ProviderInterface(ABC):
     async def close(self) -> None:
         """Close provider connections if applicable."""
         pass
-

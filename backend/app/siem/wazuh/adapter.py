@@ -112,25 +112,37 @@ def _normalize_wazuh_alert(alert: dict[str, Any]) -> SecurityEvent:
     dst_ip = data.get("dstip") or data.get("dst_ip")
     dst_port = data.get("dstport") or data.get("dst_port")
 
-    source_fields = SourceFields(
-        ip=src_ip,
-        port=int(src_port) if src_port else None,
-    ) if src_ip else None
+    source_fields = (
+        SourceFields(
+            ip=src_ip,
+            port=int(src_port) if src_port else None,
+        )
+        if src_ip
+        else None
+    )
 
-    dest_fields = DestinationFields(
-        ip=dst_ip,
-        port=int(dst_port) if dst_port else None,
-    ) if dst_ip else None
+    dest_fields = (
+        DestinationFields(
+            ip=dst_ip,
+            port=int(dst_port) if dst_port else None,
+        )
+        if dst_ip
+        else None
+    )
 
     # User
     username = data.get("srcuser") or data.get("dstuser") or data.get("user")
     user_fields = UserFields(name=username) if username else None
 
     # Host
-    host_fields = HostFields(
-        name=agent.get("name"),
-        id=agent.get("id"),
-    ) if agent.get("name") or agent.get("id") else None
+    host_fields = (
+        HostFields(
+            name=agent.get("name"),
+            id=agent.get("id"),
+        )
+        if agent.get("name") or agent.get("id")
+        else None
+    )
 
     # Rule
     rule_fields = RuleFields(
@@ -306,16 +318,14 @@ class WazuhProvider(ProviderInterface):
             agg_type = agg.get("type", "terms")
             if agg_type == "terms":
                 from collections import Counter
+
                 counts: Counter[str] = Counter()
                 for ev in events:
                     if agg_field == "agent.name" and ev.agent:
                         counts[ev.agent.name or ""] += 1
                     elif agg_field == "rule.id" and ev.rule:
                         counts[ev.rule.id or ""] += 1
-                buckets = [
-                    AggregationBucket(key=k, doc_count=c)
-                    for k, c in counts.most_common(10)
-                ]
+                buckets = [AggregationBucket(key=k, doc_count=c) for k, c in counts.most_common(10)]
                 agg_results.append(
                     AggregationResult(name=agg.get("name", agg_field), buckets=buckets)
                 )

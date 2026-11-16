@@ -160,9 +160,7 @@ async def test_wazuh_search_success_with_aggregation(
     mock_http_client.get.return_value = alerts_resp
 
     provider = WazuhProvider(http_client=mock_http_client, settings=wazuh_settings)
-    req = SearchRequest(
-        aggregations=[{"type": "terms", "field": "agent.name", "name": "by_agent"}]
-    )
+    req = SearchRequest(aggregations=[{"type": "terms", "field": "agent.name", "name": "by_agent"}])
     res = await provider.search(req)
 
     assert res.metadata.total_hits == 2

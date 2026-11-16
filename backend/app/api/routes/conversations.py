@@ -226,6 +226,9 @@ async def chat_turn(
             if "evidence_ids" in m.structured_metadata:
                 context.prior_evidence_ids.extend(m.structured_metadata["evidence_ids"])
 
+    from backend.app.agents.graph import investigation_workflow
+    from backend.app.agents.state import InvestigationState, ResolvedInvestigationContext
+
     # 4. Record analyst's user message
     user_msg = Message(
         conversation_id=conv.id,
@@ -236,173 +239,124 @@ async def chat_turn(
     session.add(user_msg)
     await session.flush()
 
-    # 5. Plan query from prompt and context
-    query_spec, intent_summary = planner.plan_query(req.message, context)
+    # 5. Execute through LangGraph Multi-Agent Investigation Workflow
+    workflow_state: InvestigationState = {
+        "request_id": request_id,
+        "user_id": current_user.id,
+        "conversation_id": conv.id,
+        "investigation_id": inv.id,
+        "provider_name": provider.name,
+        "user_query": req.message,
+        "resolved_context": ResolvedInvestigationContext(
+            target_accounts=list(context.target_accounts),
+            prior_evidence_ids=list(context.prior_evidence_ids),
+            prior_time_range=context.prior_time_range,
+        ),
+    }
 
-    # 6. Validate planned query
-    val_result = validator.validate(query_spec)
-    if not val_result.is_valid:
+    workflow_res = await investigation_workflow.ainvoke(workflow_state)
+
+    val_result = workflow_res.get("validation_result")
+    query_spec = workflow_res.get("query_plan")
+    events = workflow_res.get("events", [])
+    evidence_ids = workflow_res.get("evidence_ids", [])
+    workflow_findings = workflow_res.get("findings", [])
+    final_response = workflow_res.get("final_response", "")
+
+    if val_result is not None and not val_result.is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Query validation rejected: {[e.message for e in val_result.errors]}",
         )
 
-    # 7. Compile and execute query
-    search_req = QueryCompiler.compile_to_search_request(query_spec)
-    search_res = await provider.search(search_req)
-
-    # 8. Record query execution audit
+    # 6. Record query execution audit
+    search_req = QueryCompiler.compile_to_search_request(query_spec) if query_spec else None
     qexec = QueryExecution(
         investigation_id=inv.id,
         provider=provider.name,
-        query_spec=query_spec.model_dump(mode="json"),
-        compiled_query_redacted=search_req.model_dump(mode="json"),
-        validation_status="valid",
+        query_spec=query_spec.model_dump(mode="json") if query_spec else {},
+        compiled_query_redacted=search_req.model_dump(mode="json") if search_req else {},
+        validation_status="valid" if (val_result and val_result.is_valid) else "invalid",
         execution_status="success",
-        result_count=search_res.metadata.returned_count,
-        duration_ms=search_res.metadata.took_ms,
+        result_count=len(events),
+        duration_ms=workflow_res.get("provider_results_metadata", {}).get("took_ms", 0),
     )
     session.add(qexec)
 
-    # 9. Extract evidence IDs, suspect accounts, and record findings
-    evidence_ids = [e.event.id for e in search_res.events]
-    suspect_accounts: set[str] = set()
-    findings: list[FindingItem] = []
-
-    # Check aggregations for accounts
-    for agg in search_res.aggregations:
-        if agg.name in ["terms_user.name", "by_user"]:
-            for b in agg.buckets:
-                if b.doc_count >= 5:
-                    suspect_accounts.add(b.key)
-
-    # Also collect usernames directly from failed/compromised events
-    for ev in search_res.events:
-        if ev.user and ev.user.name:
-            suspect_accounts.add(ev.user.name)
-
-        # Store evidence reference
+    # 7. Record evidence references
+    for ev in events:
         eref = EvidenceReference(
             investigation_id=inv.id,
             provider=provider.name,
-            index_name="synthetic-events",
+            index_name="synthetic-events" if provider.name == "synthetic" else "live-events",
             document_id=ev.event.id,
             event_id=ev.event.id,
             event_timestamp=ev.timestamp,
-            snapshot={"action": ev.event.action, "outcome": ev.event.outcome},
+            snapshot={
+                "action": ev.event.action,
+                "outcome": ev.event.outcome.value if ev.event.outcome else None,
+            },
         )
         session.add(eref)
 
-    # Generate grounded finding
-    if search_res.metadata.total_hits > 0:
-        if "authentication" in str(query_spec.filters) and "failure" in str(query_spec.filters):
-            f_item = FindingItem(
-                finding_type="authentication_anomaly",
-                title=f"Authentication Failures Detected ({search_res.metadata.total_hits} events)",
-                description=(
-                    f"Identified {search_res.metadata.total_hits} failed logins across accounts: "
-                    f"{', '.join(sorted(suspect_accounts)) or 'none'}. "
-                    f"Evidence IDs: {', '.join(evidence_ids[:5])}."
-                ),
-                classification="observed",
-                severity="medium" if search_res.metadata.total_hits < 10 else "high",
-                confidence_label="high",
-                evidence_ids=evidence_ids,
-            )
-            findings.append(f_item)
-        elif "success" in str(query_spec.filters):
-            f_item = FindingItem(
-                finding_type="post_failure_success",
-                title="Successful Authentication Following Prior Failures",
-                description=(
-                    f"Observed {search_res.metadata.total_hits} successful logins "
-                    f"for targeted accounts: {', '.join(sorted(suspect_accounts))}. "
-                    f"Evidence IDs: {', '.join(evidence_ids)}."
-                ),
-                classification="observed",
-                severity="critical" if len(evidence_ids) > 0 else "low",
-                confidence_label="high",
-                evidence_ids=evidence_ids,
-            )
-            findings.append(f_item)
-        else:
-            f_item = FindingItem(
-                finding_type="security_events_observed",
-                title=f"Security Activity Observed ({search_res.metadata.total_hits} events)",
-                description=(
-                    f"Retrieved {search_res.metadata.total_hits} records from {provider.name}."
-                ),
-                classification="observed",
-                severity="medium",
-                confidence_label="high",
-                evidence_ids=evidence_ids,
-            )
-            findings.append(f_item)
+    # 8. Convert workflow findings to FindingItem and record in DB
+    findings: list[FindingItem] = []
+    suspect_accounts: set[str] = set(context.target_accounts)
 
-        # Save finding to DB
-        for fi in findings:
-            db_finding = Finding(
-                investigation_id=inv.id,
-                finding_type=fi.finding_type,
-                title=fi.title,
-                description=fi.description,
-                classification=fi.classification,
-                severity=fi.severity,
-                confidence_label=fi.confidence_label,
-                evidence_ids=fi.evidence_ids,
-            )
-            session.add(db_finding)
+    for ev in events:
+        if ev.user and ev.user.name:
+            suspect_accounts.add(ev.user.name)
 
-    # 10. Formulate grounded assistant answer
-    if search_res.metadata.total_hits == 0:
-        assistant_text = (
-            f"No matching events were found for the requested query in provider '{provider.name}'. "
-            "No anomalies or failed logins detected within the specified parameters."
+    for wf in workflow_findings:
+        f_item = FindingItem(
+            finding_type=wf.finding_type,
+            title=wf.title,
+            description=wf.description,
+            classification=wf.classification,
+            severity=wf.severity,
+            confidence_label=wf.confidence_label,
+            evidence_ids=wf.evidence_ids,
         )
-        suggestions = ["Broaden the time range", "Check other hosts or event categories"]
-    else:
-        if "success" in str(query_spec.filters):
-            assistant_text = (
-                f"**Investigation Update:** Found **{search_res.metadata.total_hits}** "
-                f"successful login(s) for the monitored account(s) "
-                f"(**{', '.join(sorted(suspect_accounts))}**).\n\n"
-                f"- **Target Accounts:** {', '.join(sorted(suspect_accounts))}\n"
-                f"- **Verified Evidence:** {', '.join(evidence_ids)}\n\n"
-                "**Risk:** HIGH/CRITICAL. Successful authentication following repeated brute-force "
-                "failures strongly indicates potential credential compromise."
-            )
-            suggestions = [
-                "Investigate host activity for these accounts",
-                "Look for evidence of lateral movement",
-                "Generate a report for this investigation",
-            ]
-        else:
-            assistant_text = (
-                f"**Analysis:** Retrieved **{search_res.metadata.total_hits}** "
-                f"authentication failure(s) in the configured window.\n\n"
-                f"- **Identified Accounts:** {', '.join(sorted(suspect_accounts)) or 'various'}\n"
-                f"- **Primary Source IPs:** 192.168.1.100, 10.0.0.55\n"
-                f"- **Sample Evidence IDs:** {', '.join(evidence_ids[:6])}\n\n"
-                "All results are backed by immutable synthetic security records."
-            )
-            suggestions = [
-                "Did any of those accounts log in successfully afterwards?",
-                "Show the top source IP addresses associated with those failures.",
-                "Generate a report for this investigation.",
-            ]
+        findings.append(f_item)
 
-    # 11. Record assistant response in messages
+        db_finding = Finding(
+            investigation_id=inv.id,
+            finding_type=wf.finding_type,
+            title=wf.title,
+            description=wf.description,
+            classification=wf.classification,
+            severity=wf.severity,
+            confidence_label=wf.confidence_label,
+            evidence_ids=wf.evidence_ids,
+        )
+        session.add(db_finding)
+
+    # 9. Follow-up suggestions
+    if "success" in str(query_spec.filters if query_spec else []):
+        suggestions = [
+            "Investigate host activity for these accounts",
+            "Look for evidence of lateral movement",
+            "Generate a report for this investigation",
+        ]
+    else:
+        suggestions = [
+            "Did any of those accounts log in successfully afterwards?",
+            "Show the top source IP addresses associated with those failures.",
+            "Generate a report for this investigation.",
+        ]
+
+    # 10. Record assistant response in messages
     meta = {
-        "suspect_accounts": list(suspect_accounts),
+        "suspect_accounts": sorted(suspect_accounts),
         "evidence_ids": evidence_ids,
-        "query_spec": query_spec.model_dump(mode="json"),
-        "result_count": search_res.metadata.total_hits,
+        "query_spec": query_spec.model_dump(mode="json") if query_spec else None,
+        "result_count": len(events),
         "findings": [f.model_dump(mode="json") for f in findings],
     }
     asst_msg = Message(
         conversation_id=conv.id,
         role="assistant",
-        content=assistant_text,
+        content=final_response,
         request_id=request_id,
         structured_metadata=meta,
     )
@@ -416,10 +370,10 @@ async def chat_turn(
         request_id=request_id,
         conversation_id=conv.id,
         investigation_id=inv.id,
-        assistant_message=assistant_text,
+        assistant_message=final_response,
         query_spec=query_spec,
         validation_status="valid",
-        result_count=search_res.metadata.total_hits,
+        result_count=len(events),
         evidence_ids=evidence_ids,
         findings=findings,
         data_mode=settings.sentinel_data_mode.value,
