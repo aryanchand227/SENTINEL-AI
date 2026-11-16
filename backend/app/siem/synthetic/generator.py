@@ -147,31 +147,33 @@ class SyntheticEventGenerator:
 
         for i in range(20):
             eid = _make_event_id("s1_ssh_brute", i)
-            self._add(SecurityEvent(
-                **{"@timestamp": self._ts(hours_offset=-23, minutes_offset=i * 2)},
-                event=EventFields(
-                    id=eid,
-                    kind=EventKind.EVENT,
-                    category=EventCategory.AUTHENTICATION,
-                    type="start",
-                    action="ssh_login",
-                    outcome=EventOutcome.FAILURE,
-                    severity=EventSeverity.MEDIUM,
-                    created=self._ts(hours_offset=-23, minutes_offset=i * 2),
-                ),
-                message=f"Failed SSH login for user {target_user['name']} from {attacker_ip}",
-                source=SourceFields(ip=attacker_ip, port=self._rng.randint(40000, 65000)),
-                destination=DestinationFields(ip=INTERNAL_IPS[0], port=22),
-                user=UserFields(**target_user),
-                host=HostFields(
-                    name=target_host["name"],
-                    id=target_host["id"],
-                    os=HostOS(name=target_host["os"]),
-                ),
-                network=NetworkFields(protocol="ssh"),
-                observer=ObserverFields(name="wazuh-agent-001"),
-                sentinel=_make_sentinel_meta(doc_id=eid),
-            ))
+            self._add(
+                SecurityEvent(
+                    **{"@timestamp": self._ts(hours_offset=-23, minutes_offset=i * 2)},
+                    event=EventFields(
+                        id=eid,
+                        kind=EventKind.EVENT,
+                        category=EventCategory.AUTHENTICATION,
+                        type="start",
+                        action="ssh_login",
+                        outcome=EventOutcome.FAILURE,
+                        severity=EventSeverity.MEDIUM,
+                        created=self._ts(hours_offset=-23, minutes_offset=i * 2),
+                    ),
+                    message=f"Failed SSH login for user {target_user['name']} from {attacker_ip}",
+                    source=SourceFields(ip=attacker_ip, port=self._rng.randint(40000, 65000)),
+                    destination=DestinationFields(ip=INTERNAL_IPS[0], port=22),
+                    user=UserFields(**target_user),
+                    host=HostFields(
+                        name=target_host["name"],
+                        id=target_host["id"],
+                        os=HostOS(name=target_host["os"]),
+                    ),
+                    network=NetworkFields(protocol="ssh"),
+                    observer=ObserverFields(name="wazuh-agent-001"),
+                    sentinel=_make_sentinel_meta(doc_id=eid),
+                )
+            )
 
     # ---- Scenario 2: SSH brute force followed by successful login ----
 
@@ -183,19 +185,53 @@ class SyntheticEventGenerator:
 
         for i in range(15):
             eid = _make_event_id("s2_ssh_brute_fail", i)
-            self._add(SecurityEvent(
-                **{"@timestamp": self._ts(hours_offset=-12, minutes_offset=i * 1)},
+            self._add(
+                SecurityEvent(
+                    **{"@timestamp": self._ts(hours_offset=-12, minutes_offset=i * 1)},
+                    event=EventFields(
+                        id=eid,
+                        kind=EventKind.EVENT,
+                        category=EventCategory.AUTHENTICATION,
+                        type="start",
+                        action="ssh_login",
+                        outcome=EventOutcome.FAILURE,
+                        severity=EventSeverity.MEDIUM,
+                        created=self._ts(hours_offset=-12, minutes_offset=i * 1),
+                    ),
+                    message=f"Failed SSH login for user {target_user['name']} from {attacker_ip}",
+                    source=SourceFields(ip=attacker_ip, port=self._rng.randint(40000, 65000)),
+                    destination=DestinationFields(ip=INTERNAL_IPS[1], port=22),
+                    user=UserFields(**target_user),
+                    host=HostFields(
+                        name=target_host["name"],
+                        id=target_host["id"],
+                        os=HostOS(name=target_host["os"]),
+                    ),
+                    network=NetworkFields(protocol="ssh"),
+                    observer=ObserverFields(name="wazuh-agent-002"),
+                    sentinel=_make_sentinel_meta(doc_id=eid),
+                )
+            )
+
+        # Successful login after failures
+        eid = _make_event_id("s2_ssh_brute_success", 0)
+        self._add(
+            SecurityEvent(
+                **{"@timestamp": self._ts(hours_offset=-12, minutes_offset=16)},
                 event=EventFields(
                     id=eid,
                     kind=EventKind.EVENT,
                     category=EventCategory.AUTHENTICATION,
                     type="start",
                     action="ssh_login",
-                    outcome=EventOutcome.FAILURE,
-                    severity=EventSeverity.MEDIUM,
-                    created=self._ts(hours_offset=-12, minutes_offset=i * 1),
+                    outcome=EventOutcome.SUCCESS,
+                    severity=EventSeverity.HIGH,
+                    created=self._ts(hours_offset=-12, minutes_offset=16),
                 ),
-                message=f"Failed SSH login for user {target_user['name']} from {attacker_ip}",
+                message=(
+                    f"Successful SSH login for user {target_user['name']} "
+                    f"from {attacker_ip} (after brute-force attempts)"
+                ),
                 source=SourceFields(ip=attacker_ip, port=self._rng.randint(40000, 65000)),
                 destination=DestinationFields(ip=INTERNAL_IPS[1], port=22),
                 user=UserFields(**target_user),
@@ -207,38 +243,8 @@ class SyntheticEventGenerator:
                 network=NetworkFields(protocol="ssh"),
                 observer=ObserverFields(name="wazuh-agent-002"),
                 sentinel=_make_sentinel_meta(doc_id=eid),
-            ))
-
-        # Successful login after failures
-        eid = _make_event_id("s2_ssh_brute_success", 0)
-        self._add(SecurityEvent(
-            **{"@timestamp": self._ts(hours_offset=-12, minutes_offset=16)},
-            event=EventFields(
-                id=eid,
-                kind=EventKind.EVENT,
-                category=EventCategory.AUTHENTICATION,
-                type="start",
-                action="ssh_login",
-                outcome=EventOutcome.SUCCESS,
-                severity=EventSeverity.HIGH,
-                created=self._ts(hours_offset=-12, minutes_offset=16),
-            ),
-            message=(
-                f"Successful SSH login for user {target_user['name']} "
-                f"from {attacker_ip} (after brute-force attempts)"
-            ),
-            source=SourceFields(ip=attacker_ip, port=self._rng.randint(40000, 65000)),
-            destination=DestinationFields(ip=INTERNAL_IPS[1], port=22),
-            user=UserFields(**target_user),
-            host=HostFields(
-                name=target_host["name"],
-                id=target_host["id"],
-                os=HostOS(name=target_host["os"]),
-            ),
-            network=NetworkFields(protocol="ssh"),
-            observer=ObserverFields(name="wazuh-agent-002"),
-            sentinel=_make_sentinel_meta(doc_id=eid),
-        ))
+            )
+        )
 
     # ---- Scenario 3: Repeated failures across multiple accounts from one source ----
 
@@ -251,31 +257,33 @@ class SyntheticEventGenerator:
         for u_idx, user in enumerate(target_users):
             for i in range(6):
                 eid = _make_event_id(f"s3_multi_acct_{user['name']}", i)
-                self._add(SecurityEvent(
-                    **{"@timestamp": self._ts(hours_offset=-8, minutes_offset=u_idx * 10 + i)},
-                    event=EventFields(
-                        id=eid,
-                        kind=EventKind.EVENT,
-                        category=EventCategory.AUTHENTICATION,
-                        type="start",
-                        action="windows_login",
-                        outcome=EventOutcome.FAILURE,
-                        severity=EventSeverity.MEDIUM,
-                        created=self._ts(hours_offset=-8, minutes_offset=u_idx * 10 + i),
-                    ),
-                    message=f"Failed Windows logon for {user['name']} from {attacker_ip}",
-                    source=SourceFields(ip=attacker_ip, port=self._rng.randint(40000, 65000)),
-                    destination=DestinationFields(ip=INTERNAL_IPS[4], port=445),
-                    user=UserFields(**user),
-                    host=HostFields(
-                        name=target_host["name"],
-                        id=target_host["id"],
-                        os=HostOS(name=target_host["os"]),
-                    ),
-                    network=NetworkFields(protocol="smb"),
-                    observer=ObserverFields(name="wazuh-agent-005"),
-                    sentinel=_make_sentinel_meta(doc_id=eid),
-                ))
+                self._add(
+                    SecurityEvent(
+                        **{"@timestamp": self._ts(hours_offset=-8, minutes_offset=u_idx * 10 + i)},
+                        event=EventFields(
+                            id=eid,
+                            kind=EventKind.EVENT,
+                            category=EventCategory.AUTHENTICATION,
+                            type="start",
+                            action="windows_login",
+                            outcome=EventOutcome.FAILURE,
+                            severity=EventSeverity.MEDIUM,
+                            created=self._ts(hours_offset=-8, minutes_offset=u_idx * 10 + i),
+                        ),
+                        message=f"Failed Windows logon for {user['name']} from {attacker_ip}",
+                        source=SourceFields(ip=attacker_ip, port=self._rng.randint(40000, 65000)),
+                        destination=DestinationFields(ip=INTERNAL_IPS[4], port=445),
+                        user=UserFields(**user),
+                        host=HostFields(
+                            name=target_host["name"],
+                            id=target_host["id"],
+                            os=HostOS(name=target_host["os"]),
+                        ),
+                        network=NetworkFields(protocol="smb"),
+                        observer=ObserverFields(name="wazuh-agent-005"),
+                        sentinel=_make_sentinel_meta(doc_id=eid),
+                    )
+                )
 
     # ---- Scenario 4: Suspicious PowerShell execution ----
 
@@ -292,35 +300,37 @@ class SyntheticEventGenerator:
 
         for i, cmd in enumerate(suspicious_commands):
             eid = _make_event_id("s4_powershell", i)
-            self._add(SecurityEvent(
-                **{"@timestamp": self._ts(hours_offset=-6, minutes_offset=i * 5)},
-                event=EventFields(
-                    id=eid,
-                    kind=EventKind.ALERT,
-                    category=EventCategory.PROCESS,
-                    type="start",
-                    action="process_created",
-                    outcome=EventOutcome.SUCCESS,
-                    severity=EventSeverity.HIGH,
-                    created=self._ts(hours_offset=-6, minutes_offset=i * 5),
-                ),
-                message=f"Suspicious PowerShell execution detected: {cmd[:80]}",
-                source=SourceFields(ip=INTERNAL_IPS[2]),
-                user=UserFields(**user),
-                host=HostFields(
-                    name=target_host["name"],
-                    id=target_host["id"],
-                    os=HostOS(name=target_host["os"]),
-                ),
-                process=ProcessFields(
-                    name="powershell.exe",
-                    command_line=cmd,
-                    pid=self._rng.randint(1000, 9999),
-                ),
-                rule=RuleFields(id="92000", name="Suspicious PowerShell Execution"),
-                observer=ObserverFields(name="wazuh-agent-003"),
-                sentinel=_make_sentinel_meta(doc_id=eid),
-            ))
+            self._add(
+                SecurityEvent(
+                    **{"@timestamp": self._ts(hours_offset=-6, minutes_offset=i * 5)},
+                    event=EventFields(
+                        id=eid,
+                        kind=EventKind.ALERT,
+                        category=EventCategory.PROCESS,
+                        type="start",
+                        action="process_created",
+                        outcome=EventOutcome.SUCCESS,
+                        severity=EventSeverity.HIGH,
+                        created=self._ts(hours_offset=-6, minutes_offset=i * 5),
+                    ),
+                    message=f"Suspicious PowerShell execution detected: {cmd[:80]}",
+                    source=SourceFields(ip=INTERNAL_IPS[2]),
+                    user=UserFields(**user),
+                    host=HostFields(
+                        name=target_host["name"],
+                        id=target_host["id"],
+                        os=HostOS(name=target_host["os"]),
+                    ),
+                    process=ProcessFields(
+                        name="powershell.exe",
+                        command_line=cmd,
+                        pid=self._rng.randint(1000, 9999),
+                    ),
+                    rule=RuleFields(id="92000", name="Suspicious PowerShell Execution"),
+                    observer=ObserverFields(name="wazuh-agent-003"),
+                    sentinel=_make_sentinel_meta(doc_id=eid),
+                )
+            )
 
     # ---- Scenario 5: Possible privilege escalation after login ----
 
@@ -331,57 +341,64 @@ class SyntheticEventGenerator:
 
         # Successful login
         eid_login = _make_event_id("s5_priv_esc_login", 0)
-        self._add(SecurityEvent(
-            **{"@timestamp": self._ts(hours_offset=-5, minutes_offset=0)},
-            event=EventFields(
-                id=eid_login,
-                kind=EventKind.EVENT,
-                category=EventCategory.AUTHENTICATION,
-                type="start",
-                action="windows_login",
-                outcome=EventOutcome.SUCCESS,
-                severity=EventSeverity.LOW,
-                created=self._ts(hours_offset=-5, minutes_offset=0),
-            ),
-            message=f"Successful Windows logon for {user['name']}",
-            source=SourceFields(ip=INTERNAL_IPS[2]),
-            destination=DestinationFields(ip=INTERNAL_IPS[4], port=3389),
-            user=UserFields(**user),
-            host=HostFields(
-                name=target_host["name"],
-                id=target_host["id"],
-                os=HostOS(name=target_host["os"]),
-            ),
-            observer=ObserverFields(name="wazuh-agent-005"),
-            sentinel=_make_sentinel_meta(doc_id=eid_login),
-        ))
+        self._add(
+            SecurityEvent(
+                **{"@timestamp": self._ts(hours_offset=-5, minutes_offset=0)},
+                event=EventFields(
+                    id=eid_login,
+                    kind=EventKind.EVENT,
+                    category=EventCategory.AUTHENTICATION,
+                    type="start",
+                    action="windows_login",
+                    outcome=EventOutcome.SUCCESS,
+                    severity=EventSeverity.LOW,
+                    created=self._ts(hours_offset=-5, minutes_offset=0),
+                ),
+                message=f"Successful Windows logon for {user['name']}",
+                source=SourceFields(ip=INTERNAL_IPS[2]),
+                destination=DestinationFields(ip=INTERNAL_IPS[4], port=3389),
+                user=UserFields(**user),
+                host=HostFields(
+                    name=target_host["name"],
+                    id=target_host["id"],
+                    os=HostOS(name=target_host["os"]),
+                ),
+                observer=ObserverFields(name="wazuh-agent-005"),
+                sentinel=_make_sentinel_meta(doc_id=eid_login),
+            )
+        )
 
         # Privilege escalation: adding to admin group
         eid_priv = _make_event_id("s5_priv_esc_add_admin", 0)
-        self._add(SecurityEvent(
-            **{"@timestamp": self._ts(hours_offset=-5, minutes_offset=3)},
-            event=EventFields(
-                id=eid_priv,
-                kind=EventKind.ALERT,
-                category=EventCategory.IAM,
-                type="change",
-                action="group_membership_add",
-                outcome=EventOutcome.SUCCESS,
-                severity=EventSeverity.CRITICAL,
-                created=self._ts(hours_offset=-5, minutes_offset=3),
-            ),
-            message=f"User {user['name']} added to Administrators group on {target_host['name']}",
-            source=SourceFields(ip=INTERNAL_IPS[2]),
-            user=UserFields(**user),
-            host=HostFields(
-                name=target_host["name"],
-                id=target_host["id"],
-                os=HostOS(name=target_host["os"]),
-            ),
-            rule=RuleFields(id="5560", name="User Added to Admin Group"),
-            observer=ObserverFields(name="wazuh-agent-005"),
-            sentinel=_make_sentinel_meta(doc_id=eid_priv),
-        ))
+        self._add(
+            SecurityEvent(
+                **{"@timestamp": self._ts(hours_offset=-5, minutes_offset=3)},
+                event=EventFields(
+                    id=eid_priv,
+                    kind=EventKind.ALERT,
+                    category=EventCategory.IAM,
+                    type="change",
+                    action="group_membership_add",
+                    outcome=EventOutcome.SUCCESS,
+                    severity=EventSeverity.CRITICAL,
+                    created=self._ts(hours_offset=-5, minutes_offset=3),
+                ),
+                message=(
+                    f"User {user['name']} added to Administrators group "
+                    f"on {target_host['name']}"
+                ),
+                source=SourceFields(ip=INTERNAL_IPS[2]),
+                user=UserFields(**user),
+                host=HostFields(
+                    name=target_host["name"],
+                    id=target_host["id"],
+                    os=HostOS(name=target_host["os"]),
+                ),
+                rule=RuleFields(id="5560", name="User Added to Admin Group"),
+                observer=ObserverFields(name="wazuh-agent-005"),
+                sentinel=_make_sentinel_meta(doc_id=eid_priv),
+            )
+        )
 
     # ---- Scenario 6: File-integrity modification ----
 
@@ -398,32 +415,34 @@ class SyntheticEventGenerator:
         for i, fpath in enumerate(files):
             eid = _make_event_id("s6_fim", i)
             fake_hash = hashlib.sha256(f"fim:{fpath}:{i}".encode()).hexdigest()
-            self._add(SecurityEvent(
-                **{"@timestamp": self._ts(hours_offset=-4, minutes_offset=i * 10)},
-                event=EventFields(
-                    id=eid,
-                    kind=EventKind.ALERT,
-                    category=EventCategory.FILE,
-                    type="change",
-                    action="file_modified",
-                    outcome=EventOutcome.UNKNOWN,
-                    severity=EventSeverity.HIGH,
-                    created=self._ts(hours_offset=-4, minutes_offset=i * 10),
-                ),
-                message=f"File integrity change detected: {fpath}",
-                host=HostFields(
-                    name=target_host["name"],
-                    id=target_host["id"],
-                    os=HostOS(name=target_host["os"]),
-                ),
-                file=FileFields(
-                    path=fpath,
-                    hash=FileHash(sha256=fake_hash),
-                ),
-                rule=RuleFields(id="550", name="File Integrity Monitoring"),
-                observer=ObserverFields(name="wazuh-agent-007"),
-                sentinel=_make_sentinel_meta(doc_id=eid),
-            ))
+            self._add(
+                SecurityEvent(
+                    **{"@timestamp": self._ts(hours_offset=-4, minutes_offset=i * 10)},
+                    event=EventFields(
+                        id=eid,
+                        kind=EventKind.ALERT,
+                        category=EventCategory.FILE,
+                        type="change",
+                        action="file_modified",
+                        outcome=EventOutcome.UNKNOWN,
+                        severity=EventSeverity.HIGH,
+                        created=self._ts(hours_offset=-4, minutes_offset=i * 10),
+                    ),
+                    message=f"File integrity change detected: {fpath}",
+                    host=HostFields(
+                        name=target_host["name"],
+                        id=target_host["id"],
+                        os=HostOS(name=target_host["os"]),
+                    ),
+                    file=FileFields(
+                        path=fpath,
+                        hash=FileHash(sha256=fake_hash),
+                    ),
+                    rule=RuleFields(id="550", name="File Integrity Monitoring"),
+                    observer=ObserverFields(name="wazuh-agent-007"),
+                    sentinel=_make_sentinel_meta(doc_id=eid),
+                )
+            )
 
     # ---- Scenario 7: Port scan followed by connection attempt ----
 
@@ -436,58 +455,62 @@ class SyntheticEventGenerator:
 
         for i, port in enumerate(scanned_ports):
             eid = _make_event_id("s7_portscan", i)
-            self._add(SecurityEvent(
-                **{"@timestamp": self._ts(hours_offset=-3, minutes_offset=i)},
+            self._add(
+                SecurityEvent(
+                    **{"@timestamp": self._ts(hours_offset=-3, minutes_offset=i)},
+                    event=EventFields(
+                        id=eid,
+                        kind=EventKind.ALERT,
+                        category=EventCategory.NETWORK,
+                        type="connection",
+                        action="port_scan",
+                        outcome=EventOutcome.UNKNOWN,
+                        severity=EventSeverity.MEDIUM,
+                        created=self._ts(hours_offset=-3, minutes_offset=i),
+                    ),
+                    message=f"Port scan detected from {scanner_ip} to port {port}",
+                    source=SourceFields(ip=scanner_ip, port=self._rng.randint(40000, 65000)),
+                    destination=DestinationFields(ip=INTERNAL_IPS[0], port=port),
+                    host=HostFields(
+                        name=target_host["name"],
+                        id=target_host["id"],
+                        os=HostOS(name=target_host["os"]),
+                    ),
+                    network=NetworkFields(protocol="tcp"),
+                    rule=RuleFields(id="87700", name="Port Scan Detected"),
+                    observer=ObserverFields(name="wazuh-agent-001"),
+                    sentinel=_make_sentinel_meta(doc_id=eid),
+                )
+            )
+
+        # Connection attempt to SSH after scan
+        eid_conn = _make_event_id("s7_portscan_connect", 0)
+        self._add(
+            SecurityEvent(
+                **{"@timestamp": self._ts(hours_offset=-3, minutes_offset=15)},
                 event=EventFields(
-                    id=eid,
-                    kind=EventKind.ALERT,
+                    id=eid_conn,
+                    kind=EventKind.EVENT,
                     category=EventCategory.NETWORK,
                     type="connection",
-                    action="port_scan",
-                    outcome=EventOutcome.UNKNOWN,
-                    severity=EventSeverity.MEDIUM,
-                    created=self._ts(hours_offset=-3, minutes_offset=i),
+                    action="connection_attempt",
+                    outcome=EventOutcome.SUCCESS,
+                    severity=EventSeverity.HIGH,
+                    created=self._ts(hours_offset=-3, minutes_offset=15),
                 ),
-                message=f"Port scan detected from {scanner_ip} to port {port}",
+                message=f"Connection established from {scanner_ip} to SSH after port scan",
                 source=SourceFields(ip=scanner_ip, port=self._rng.randint(40000, 65000)),
-                destination=DestinationFields(ip=INTERNAL_IPS[0], port=port),
+                destination=DestinationFields(ip=INTERNAL_IPS[0], port=22),
                 host=HostFields(
                     name=target_host["name"],
                     id=target_host["id"],
                     os=HostOS(name=target_host["os"]),
                 ),
-                network=NetworkFields(protocol="tcp"),
-                rule=RuleFields(id="87700", name="Port Scan Detected"),
+                network=NetworkFields(protocol="ssh"),
                 observer=ObserverFields(name="wazuh-agent-001"),
-                sentinel=_make_sentinel_meta(doc_id=eid),
-            ))
-
-        # Connection attempt to SSH after scan
-        eid_conn = _make_event_id("s7_portscan_connect", 0)
-        self._add(SecurityEvent(
-            **{"@timestamp": self._ts(hours_offset=-3, minutes_offset=15)},
-            event=EventFields(
-                id=eid_conn,
-                kind=EventKind.EVENT,
-                category=EventCategory.NETWORK,
-                type="connection",
-                action="connection_attempt",
-                outcome=EventOutcome.SUCCESS,
-                severity=EventSeverity.HIGH,
-                created=self._ts(hours_offset=-3, minutes_offset=15),
-            ),
-            message=f"Connection established from {scanner_ip} to SSH after port scan",
-            source=SourceFields(ip=scanner_ip, port=self._rng.randint(40000, 65000)),
-            destination=DestinationFields(ip=INTERNAL_IPS[0], port=22),
-            host=HostFields(
-                name=target_host["name"],
-                id=target_host["id"],
-                os=HostOS(name=target_host["os"]),
-            ),
-            network=NetworkFields(protocol="ssh"),
-            observer=ObserverFields(name="wazuh-agent-001"),
-            sentinel=_make_sentinel_meta(doc_id=eid_conn),
-        ))
+                sentinel=_make_sentinel_meta(doc_id=eid_conn),
+            )
+        )
 
     # ---- Scenario 8: Suspicious outbound communication ----
 
@@ -499,32 +522,34 @@ class SyntheticEventGenerator:
 
         for i in range(3):
             eid = _make_event_id("s8_c2_outbound", i)
-            self._add(SecurityEvent(
-                **{"@timestamp": self._ts(hours_offset=-2, minutes_offset=i * 30)},
-                event=EventFields(
-                    id=eid,
-                    kind=EventKind.ALERT,
-                    category=EventCategory.NETWORK,
-                    type="connection",
-                    action="outbound_connection",
-                    outcome=EventOutcome.SUCCESS,
-                    severity=EventSeverity.CRITICAL,
-                    created=self._ts(hours_offset=-2, minutes_offset=i * 30),
-                ),
-                message=f"Suspicious outbound connection to {c2_ip} from {target_host['name']}",
-                source=SourceFields(ip=INTERNAL_IPS[3], port=self._rng.randint(40000, 65000)),
-                destination=DestinationFields(ip=c2_ip, port=443),
-                user=UserFields(**user),
-                host=HostFields(
-                    name=target_host["name"],
-                    id=target_host["id"],
-                    os=HostOS(name=target_host["os"]),
-                ),
-                network=NetworkFields(protocol="https"),
-                rule=RuleFields(id="100100", name="Suspicious Outbound Connection"),
-                observer=ObserverFields(name="wazuh-agent-004"),
-                sentinel=_make_sentinel_meta(doc_id=eid),
-            ))
+            self._add(
+                SecurityEvent(
+                    **{"@timestamp": self._ts(hours_offset=-2, minutes_offset=i * 30)},
+                    event=EventFields(
+                        id=eid,
+                        kind=EventKind.ALERT,
+                        category=EventCategory.NETWORK,
+                        type="connection",
+                        action="outbound_connection",
+                        outcome=EventOutcome.SUCCESS,
+                        severity=EventSeverity.CRITICAL,
+                        created=self._ts(hours_offset=-2, minutes_offset=i * 30),
+                    ),
+                    message=f"Suspicious outbound connection to {c2_ip} from {target_host['name']}",
+                    source=SourceFields(ip=INTERNAL_IPS[3], port=self._rng.randint(40000, 65000)),
+                    destination=DestinationFields(ip=c2_ip, port=443),
+                    user=UserFields(**user),
+                    host=HostFields(
+                        name=target_host["name"],
+                        id=target_host["id"],
+                        os=HostOS(name=target_host["os"]),
+                    ),
+                    network=NetworkFields(protocol="https"),
+                    rule=RuleFields(id="100100", name="Suspicious Outbound Connection"),
+                    observer=ObserverFields(name="wazuh-agent-004"),
+                    sentinel=_make_sentinel_meta(doc_id=eid),
+                )
+            )
 
     # ---- Scenario 9: Malware alert with host and rule metadata ----
 
@@ -536,43 +561,45 @@ class SyntheticEventGenerator:
         eid = _make_event_id("s9_malware", 0)
         malware_hash = hashlib.sha256(b"synthetic_malware_sample").hexdigest()
 
-        self._add(SecurityEvent(
-            **{"@timestamp": self._ts(hours_offset=-1, minutes_offset=0)},
-            event=EventFields(
-                id=eid,
-                kind=EventKind.ALERT,
-                category=EventCategory.MALWARE,
-                type="info",
-                action="malware_detected",
-                outcome=EventOutcome.SUCCESS,
-                severity=EventSeverity.CRITICAL,
-                created=self._ts(hours_offset=-1, minutes_offset=0),
-            ),
-            message=(
-                "Malware detected: Trojan.GenericKD.46789 in "
-                "C:\\Users\\bwilson\\Downloads\\update.exe"
-            ),
-            source=SourceFields(ip=INTERNAL_IPS[2]),
-            user=UserFields(**user),
-            host=HostFields(
-                name=target_host["name"],
-                id=target_host["id"],
-                os=HostOS(name=target_host["os"]),
-            ),
-            process=ProcessFields(
-                name="update.exe",
-                command_line="C:\\Users\\bwilson\\Downloads\\update.exe",
-                pid=4567,
-            ),
-            file=FileFields(
-                path="C:\\Users\\bwilson\\Downloads\\update.exe",
-                hash=FileHash(sha256=malware_hash),
-            ),
-            rule=RuleFields(id="87105", name="Malware Detected"),
-            agent=AgentFields(id="agent-003", name="wazuh-agent-003"),
-            observer=ObserverFields(name="wazuh-agent-003"),
-            sentinel=_make_sentinel_meta(doc_id=eid),
-        ))
+        self._add(
+            SecurityEvent(
+                **{"@timestamp": self._ts(hours_offset=-1, minutes_offset=0)},
+                event=EventFields(
+                    id=eid,
+                    kind=EventKind.ALERT,
+                    category=EventCategory.MALWARE,
+                    type="info",
+                    action="malware_detected",
+                    outcome=EventOutcome.SUCCESS,
+                    severity=EventSeverity.CRITICAL,
+                    created=self._ts(hours_offset=-1, minutes_offset=0),
+                ),
+                message=(
+                    "Malware detected: Trojan.GenericKD.46789 in "
+                    "C:\\Users\\bwilson\\Downloads\\update.exe"
+                ),
+                source=SourceFields(ip=INTERNAL_IPS[2]),
+                user=UserFields(**user),
+                host=HostFields(
+                    name=target_host["name"],
+                    id=target_host["id"],
+                    os=HostOS(name=target_host["os"]),
+                ),
+                process=ProcessFields(
+                    name="update.exe",
+                    command_line="C:\\Users\\bwilson\\Downloads\\update.exe",
+                    pid=4567,
+                ),
+                file=FileFields(
+                    path="C:\\Users\\bwilson\\Downloads\\update.exe",
+                    hash=FileHash(sha256=malware_hash),
+                ),
+                rule=RuleFields(id="87105", name="Malware Detected"),
+                agent=AgentFields(id="agent-003", name="wazuh-agent-003"),
+                observer=ObserverFields(name="wazuh-agent-003"),
+                sentinel=_make_sentinel_meta(doc_id=eid),
+            )
+        )
 
     # ---- Scenario 10: Benign activity that should not be escalated ----
 
@@ -584,83 +611,89 @@ class SyntheticEventGenerator:
 
         for i, (user, host) in enumerate(zip(benign_users, benign_hosts)):
             eid = _make_event_id("s10_benign_login", i)
-            self._add(SecurityEvent(
-                **{"@timestamp": self._ts(hours_offset=-10, minutes_offset=i * 60)},
-                event=EventFields(
-                    id=eid,
-                    kind=EventKind.EVENT,
-                    category=EventCategory.AUTHENTICATION,
-                    type="start",
-                    action="windows_login",
-                    outcome=EventOutcome.SUCCESS,
-                    severity=EventSeverity.INFORMATIONAL,
-                    created=self._ts(hours_offset=-10, minutes_offset=i * 60),
-                ),
-                message=f"Successful login for {user['name']} on {host['name']}",
-                source=SourceFields(ip=INTERNAL_IPS[i]),
-                user=UserFields(**user),
-                host=HostFields(
-                    name=host["name"],
-                    id=host["id"],
-                    os=HostOS(name=host["os"]),
-                ),
-                observer=ObserverFields(name=f"wazuh-agent-{host['id'][-3:]}"),
-                sentinel=_make_sentinel_meta(doc_id=eid),
-            ))
+            self._add(
+                SecurityEvent(
+                    **{"@timestamp": self._ts(hours_offset=-10, minutes_offset=i * 60)},
+                    event=EventFields(
+                        id=eid,
+                        kind=EventKind.EVENT,
+                        category=EventCategory.AUTHENTICATION,
+                        type="start",
+                        action="windows_login",
+                        outcome=EventOutcome.SUCCESS,
+                        severity=EventSeverity.INFORMATIONAL,
+                        created=self._ts(hours_offset=-10, minutes_offset=i * 60),
+                    ),
+                    message=f"Successful login for {user['name']} on {host['name']}",
+                    source=SourceFields(ip=INTERNAL_IPS[i]),
+                    user=UserFields(**user),
+                    host=HostFields(
+                        name=host["name"],
+                        id=host["id"],
+                        os=HostOS(name=host["os"]),
+                    ),
+                    observer=ObserverFields(name=f"wazuh-agent-{host['id'][-3:]}"),
+                    sentinel=_make_sentinel_meta(doc_id=eid),
+                )
+            )
 
         # Routine scheduled task
         eid_sched = _make_event_id("s10_benign_task", 0)
-        self._add(SecurityEvent(
-            **{"@timestamp": self._ts(hours_offset=-6, minutes_offset=30)},
-            event=EventFields(
-                id=eid_sched,
-                kind=EventKind.EVENT,
-                category=EventCategory.PROCESS,
-                type="start",
-                action="process_created",
-                outcome=EventOutcome.SUCCESS,
-                severity=EventSeverity.INFORMATIONAL,
-                created=self._ts(hours_offset=-6, minutes_offset=30),
-            ),
-            message="Scheduled backup task executed: svc_backup running backup.sh",
-            user=UserFields(**USERS[6]),  # svc_backup
-            host=HostFields(
-                name=HOSTS[1]["name"],
-                id=HOSTS[1]["id"],
-                os=HostOS(name=HOSTS[1]["os"]),
-            ),
-            process=ProcessFields(
-                name="backup.sh",
-                command_line="/opt/scripts/backup.sh --full",
-                pid=12345,
-            ),
-            observer=ObserverFields(name="wazuh-agent-002"),
-            sentinel=_make_sentinel_meta(doc_id=eid_sched),
-        ))
+        self._add(
+            SecurityEvent(
+                **{"@timestamp": self._ts(hours_offset=-6, minutes_offset=30)},
+                event=EventFields(
+                    id=eid_sched,
+                    kind=EventKind.EVENT,
+                    category=EventCategory.PROCESS,
+                    type="start",
+                    action="process_created",
+                    outcome=EventOutcome.SUCCESS,
+                    severity=EventSeverity.INFORMATIONAL,
+                    created=self._ts(hours_offset=-6, minutes_offset=30),
+                ),
+                message="Scheduled backup task executed: svc_backup running backup.sh",
+                user=UserFields(**USERS[6]),  # svc_backup
+                host=HostFields(
+                    name=HOSTS[1]["name"],
+                    id=HOSTS[1]["id"],
+                    os=HostOS(name=HOSTS[1]["os"]),
+                ),
+                process=ProcessFields(
+                    name="backup.sh",
+                    command_line="/opt/scripts/backup.sh --full",
+                    pid=12345,
+                ),
+                observer=ObserverFields(name="wazuh-agent-002"),
+                sentinel=_make_sentinel_meta(doc_id=eid_sched),
+            )
+        )
 
         # Normal DNS query (benign network)
         eid_dns = _make_event_id("s10_benign_dns", 0)
-        self._add(SecurityEvent(
-            **{"@timestamp": self._ts(hours_offset=-7, minutes_offset=15)},
-            event=EventFields(
-                id=eid_dns,
-                kind=EventKind.EVENT,
-                category=EventCategory.NETWORK,
-                type="connection",
-                action="dns_query",
-                outcome=EventOutcome.SUCCESS,
-                severity=EventSeverity.INFORMATIONAL,
-                created=self._ts(hours_offset=-7, minutes_offset=15),
-            ),
-            message="DNS query for updates.microsoft.com from workstation-01",
-            source=SourceFields(ip=INTERNAL_IPS[2], port=54321),
-            destination=DestinationFields(ip="8.8.8.8", port=53),
-            host=HostFields(
-                name=HOSTS[2]["name"],
-                id=HOSTS[2]["id"],
-                os=HostOS(name=HOSTS[2]["os"]),
-            ),
-            network=NetworkFields(protocol="dns"),
-            observer=ObserverFields(name="wazuh-agent-003"),
-            sentinel=_make_sentinel_meta(doc_id=eid_dns),
-        ))
+        self._add(
+            SecurityEvent(
+                **{"@timestamp": self._ts(hours_offset=-7, minutes_offset=15)},
+                event=EventFields(
+                    id=eid_dns,
+                    kind=EventKind.EVENT,
+                    category=EventCategory.NETWORK,
+                    type="connection",
+                    action="dns_query",
+                    outcome=EventOutcome.SUCCESS,
+                    severity=EventSeverity.INFORMATIONAL,
+                    created=self._ts(hours_offset=-7, minutes_offset=15),
+                ),
+                message="DNS query for updates.microsoft.com from workstation-01",
+                source=SourceFields(ip=INTERNAL_IPS[2], port=54321),
+                destination=DestinationFields(ip="8.8.8.8", port=53),
+                host=HostFields(
+                    name=HOSTS[2]["name"],
+                    id=HOSTS[2]["id"],
+                    os=HostOS(name=HOSTS[2]["os"]),
+                ),
+                network=NetworkFields(protocol="dns"),
+                observer=ObserverFields(name="wazuh-agent-003"),
+                sentinel=_make_sentinel_meta(doc_id=eid_dns),
+            )
+        )

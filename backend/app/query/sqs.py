@@ -82,6 +82,7 @@ class SentinelQuerySpec(BaseModel):
     Strict Pydantic v2 specification with extra="forbid".
     All SIEM searches are planned in this representation.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     provider: Literal["synthetic", "elasticsearch", "wazuh"] = "synthetic"
