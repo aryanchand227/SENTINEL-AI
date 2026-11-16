@@ -1,0 +1,85 @@
+[
+  {
+    "id": "eval-01",
+    "scenario_number": 1,
+    "scenario_name": "SSH Brute Force",
+    "question": "Find accounts with failed logins in the last 24 hours.",
+    "expected_category": "authentication",
+    "expected_outcome": "failure",
+    "expected_min_hits": 5
+  },
+  {
+    "id": "eval-02",
+    "scenario_number": 2,
+    "scenario_name": "Brute Force Followed by Success",
+    "question": "Did any of those accounts log in successfully afterwards?",
+    "expected_category": "authentication",
+    "expected_outcome": "success",
+    "expected_min_hits": 1
+  },
+  {
+    "id": "eval-03",
+    "scenario_number": 3,
+    "scenario_name": "Credential Stuffing Across Multiple Accounts",
+    "question": "Show top source IPs associated with authentication failures.",
+    "expected_category": "authentication",
+    "expected_outcome": "failure",
+    "expected_min_hits": 5
+  },
+  {
+    "id": "eval-04",
+    "scenario_number": 4,
+    "scenario_name": "Privilege Escalation",
+    "question": "Search for process events involving admin privilege escalation.",
+    "expected_category": "process",
+    "expected_min_hits": 1
+  },
+  {
+    "id": "eval-05",
+    "scenario_number": 5,
+    "scenario_name": "Suspicious PowerShell Execution",
+    "question": "Find suspicious PowerShell script execution in the last 24 hours.",
+    "expected_category": "process",
+    "expected_min_hits": 1
+  },
+  {
+    "id": "eval-06",
+    "scenario_number": 6,
+    "scenario_name": "Ransomware Activity",
+    "question": "Search for malware and ransomware detection alerts.",
+    "expected_category": "malware",
+    "expected_min_hits": 1
+  },
+  {
+    "id": "eval-07",
+    "scenario_number": 7,
+    "scenario_name": "Port Scanning and Discovery",
+    "question": "Identify network port scanning or service discovery activity.",
+    "expected_category": "network",
+    "expected_min_hits": 1
+  },
+  {
+    "id": "eval-08",
+    "scenario_number": 8,
+    "scenario_name": "Data Exfiltration via HTTPS",
+    "question": "Find anomalous outbound HTTPS network connections.",
+    "expected_category": "network",
+    "expected_min_hits": 1
+  },
+  {
+    "id": "eval-09",
+    "scenario_number": 9,
+    "scenario_name": "Benign Noise / Normal Operations",
+    "question": "Retrieve routine successful authentications and background activity.",
+    "expected_category": "authentication",
+    "expected_min_hits": 1
+  },
+  {
+    "id": "eval-10",
+    "scenario_number": 10,
+    "scenario_name": "Mixed Threat with Benign Background",
+    "question": "Review all security alerts and logon events in the last 24 hours.",
+    "expected_category": "authentication",
+    "expected_min_hits": 1
+  }
+]
