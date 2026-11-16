@@ -7,7 +7,7 @@ Secrets are never logged or exposed via API responses.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
@@ -15,19 +15,19 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class AppEnv(str, Enum):
+class AppEnv(StrEnum):
     DEVELOPMENT = "development"
     TESTING = "testing"
     PRODUCTION = "production"
 
 
-class SiemProvider(str, Enum):
+class SiemProvider(StrEnum):
     SYNTHETIC = "synthetic"
     ELASTICSEARCH = "elasticsearch"
     WAZUH = "wazuh"
 
 
-class DataMode(str, Enum):
+class DataMode(StrEnum):
     SYNTHETIC = "synthetic"
     LIVE = "live"
 

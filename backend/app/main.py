@@ -25,7 +25,9 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.app_name,
-        description="Conversational SIEM Assistant for Investigation and Automated Threat Reporting",
+        description=(
+            "Conversational SIEM Assistant for Investigation and Automated Threat Reporting"
+        ),
         version="0.1.0",
         lifespan=lifespan,
         docs_url="/docs" if settings.app_env != "production" else None,

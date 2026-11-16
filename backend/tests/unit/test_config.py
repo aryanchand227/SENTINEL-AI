@@ -2,8 +2,6 @@
 Unit tests for core configuration.
 """
 
-import os
-
 import pytest
 
 

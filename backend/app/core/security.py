@@ -5,7 +5,7 @@ SENTINEL AI — Security utilities: JWT, password hashing, RBAC.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 
 import bcrypt
 from jose import JWTError, jwt
@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from backend.app.core.config import get_settings
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     ANALYST = "analyst"
     SENIOR_ANALYST = "senior_analyst"
     ADMIN = "admin"
@@ -48,7 +48,8 @@ def create_access_token(
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
     payload = {"sub": user_id, "role": role.value, "exp": expire}
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    encoded = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return str(encoded)
 
 
 def decode_access_token(token: str) -> TokenPayload:
