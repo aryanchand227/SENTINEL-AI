@@ -27,6 +27,7 @@ class TestAuthAPI:
     @pytest.mark.asyncio
     async def test_login_and_me(self, client: AsyncClient) -> None:
         import uuid
+
         test_email = f"analyst_{uuid.uuid4().hex[:6]}@sentinel.ai"
         test_pass = "MyP@ssword123!"
 
