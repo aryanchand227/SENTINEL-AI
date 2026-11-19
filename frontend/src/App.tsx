@@ -557,7 +557,7 @@ export default function App() {
                     </div>
 
                     <a
-                      href={rep.download_url}
+                      href={rep.download_url.startsWith('http') ? rep.download_url : `${import.meta.env.VITE_API_BASE_URL || ''}${rep.download_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
