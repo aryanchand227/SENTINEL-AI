@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+from sqlalchemy import text
 
 from backend.app.core.config import get_settings
+from backend.app.persistence.database import get_engine
 
 router = APIRouter()
 
@@ -39,8 +41,14 @@ async def readiness() -> ReadinessResponse:
     settings = get_settings()
     checks: dict[str, str] = {}
 
-    # Database check — basic for now, will be enhanced with actual DB ping
-    checks["database"] = "ok"
+    # Database check — actual live ping
+    try:
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = f"error: {str(e)[:50]}"
 
     # Provider check
     if settings.is_synthetic_mode():

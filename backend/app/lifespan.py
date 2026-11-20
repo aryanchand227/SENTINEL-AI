@@ -36,6 +36,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_db()
 
+    # Ensure default analyst user exists
+    from sqlalchemy import select
+
+    from backend.app.core.security import hash_password
+    from backend.app.persistence.database import get_session_factory
+    from backend.app.persistence.models import User
+
+    factory = get_session_factory()
+    async with factory() as session:
+        user_exists = (
+            await session.execute(select(User).where(User.email == "analyst@sentinel.ai"))
+        ).scalar_one_or_none()
+        if user_exists is None:
+            demo_user = User(
+                email="analyst@sentinel.ai",
+                password_hash=hash_password("Sentinel123!"),
+                display_name="Demo SOC Analyst",
+                role="analyst",
+            )
+            session.add(demo_user)
+            await session.commit()
+            logger.info("Initialized default analyst account: analyst@sentinel.ai")
+
     yield
 
     from backend.app.persistence.database import close_db
