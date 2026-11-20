@@ -83,18 +83,18 @@ async def run_evaluation(provider: str = "synthetic") -> int:
                 f"{hit_count:<5} | {risk_score:<5} | {latency_ms:<9.1f} | {status_str}"
             )
 
-            results.append({
-                "id": q["id"],
-                "scenario": q["scenario_name"],
-                "passed": passed,
-                "latency_ms": latency_ms,
-                "is_valid": is_valid,
-                "hit_count": hit_count,
-                "risk_score": risk_score,
-                "mitre_techniques": [
-                    m.technique_id for m in res.get("mitre_mappings", [])
-                ],
-            })
+            results.append(
+                {
+                    "id": q["id"],
+                    "scenario": q["scenario_name"],
+                    "passed": passed,
+                    "latency_ms": latency_ms,
+                    "is_valid": is_valid,
+                    "hit_count": hit_count,
+                    "risk_score": risk_score,
+                    "mitre_techniques": [m.technique_id for m in res.get("mitre_mappings", [])],
+                }
+            )
         except Exception as e:
             all_passed = False
             latency_ms = (time.perf_counter() - t0) * 1000.0
@@ -102,20 +102,20 @@ async def run_evaluation(provider: str = "synthetic") -> int:
                 f"{q['id']:<8} | {q['scenario_name'][:28]:<28} | {'ERR':<5} | "
                 f"{0:<5} | {0:<5} | {latency_ms:<9.1f} | ERROR: {e}"
             )
-            results.append({
-                "id": q["id"],
-                "scenario": q["scenario_name"],
-                "passed": False,
-                "latency_ms": latency_ms,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "id": q["id"],
+                    "scenario": q["scenario_name"],
+                    "passed": False,
+                    "latency_ms": latency_ms,
+                    "error": str(e),
+                }
+            )
 
     total_duration = time.perf_counter() - start_total
     passed_count = sum(1 for r in results if r.get("passed"))
     valid_sqs_count = sum(1 for r in results if r.get("is_valid"))
-    avg_latency = (
-        sum(r["latency_ms"] for r in results) / len(results) if results else 0
-    )
+    avg_latency = sum(r["latency_ms"] for r in results) / len(results) if results else 0
 
     print("=" * 90)
     print("  SUMMARY BENCHMARK METRICS")

@@ -79,9 +79,7 @@ async def verify_db() -> None:
             await session.execute(select(User).where(User.email == test_email))
         ).scalar_one()
         assert read_user.display_name == "Verification User"
-        print(
-            f"Successfully read back test user: {read_user.email} (Role: {read_user.role})"
-        )
+        print(f"Successfully read back test user: {read_user.email} (Role: {read_user.role})")
 
         # 4. Clean up
         await session.delete(conv)
