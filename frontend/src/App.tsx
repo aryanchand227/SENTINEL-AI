@@ -14,6 +14,8 @@ import {
   fetchDatabaseHealth,
   fetchReadiness,
   fetchCurrentUser,
+  login,
+  getAuthToken,
   clearAuthToken,
   createConversation,
   getConversationDetail,
@@ -76,36 +78,57 @@ export default function App() {
       const t0 = performance.now()
 
       try {
-        // 1. Health & status checks in parallel
-        const [_readiness, dbH, provStatus] = await Promise.allSettled([
+        // 1. Public health & database checks in parallel
+        const [_readiness, dbH] = await Promise.allSettled([
           fetchReadiness(),
           fetchDatabaseHealth(),
-          fetchProviderStatus(),
         ])
-
-        if (provStatus.status === 'fulfilled') setProviderStatus(provStatus.value)
         if (dbH.status === 'fulfilled') setDbHealth(dbH.value)
 
-        // 2. Attempt to fetch current user (auto-seeds demo user in dev mode)
-        try {
-          const profile = await fetchCurrentUser()
-          setUser(profile)
-        } catch {
-          // Dev fallback
-          setUser({
-            id: 'usr-demo-analyst',
-            email: 'analyst@sentinel.ai',
-            display_name: 'Demo SOC Analyst',
-            role: 'analyst',
-            is_active: true,
-          })
+        // 2. Ensure authenticated analyst session
+        let profile: UserProfile | null = null
+        if (getAuthToken()) {
+          try {
+            profile = await fetchCurrentUser()
+          } catch {
+            clearAuthToken()
+          }
         }
 
-        // 3. Create or load initial investigation conversation
-        const conv = await createConversation('Initial SOC Incident Investigation')
-        setConversation(conv)
+        if (!profile) {
+          try {
+            // Auto-authenticate with default demo analyst credentials for seamless SOC demo
+            const authRes = await login('analyst@sentinel.ai', 'Sentinel123!')
+            profile = {
+              id: authRes.user_id,
+              email: authRes.email,
+              display_name: authRes.display_name,
+              role: authRes.role,
+              is_active: true,
+            }
+          } catch (loginErr: any) {
+            console.warn('Auto-login notice:', loginErr)
+          }
+        }
+        setUser(profile)
 
-        // 4. Load initial security telemetry via live backend SQS query
+        // 3. Provider status (now authenticated)
+        try {
+          const provStatus = await fetchProviderStatus()
+          setProviderStatus(provStatus)
+        } catch (provErr: any) {
+          console.warn('Provider status notice:', provErr)
+        }
+
+        // 4. Create or load initial investigation conversation
+        try {
+          const conv = await createConversation('Initial SOC Incident Investigation')
+          setConversation(conv)
+        } catch (convErr: any) {
+          console.warn('Conversation init notice:', convErr)
+        }
+
+        // 5. Load initial security telemetry via live backend SQS query
         try {
           const queryRes = await executeSqsQuery({ pageSize: 100, intent: 'Initial SOC telemetry load' })
           setEvents(queryRes.events || [])
@@ -117,14 +140,14 @@ export default function App() {
             `Loaded ${queryRes.metadata.total_hits} canonical events across 10 scenarios`
           )
         } catch (queryErr: any) {
-          console.warn('Initial event load error:', queryErr)
+          console.warn('Initial event load notice:', queryErr)
         }
 
         const elapsed = Math.round(performance.now() - t0)
         addAuditRecord('SystemInit', 'Backend Readiness', 'success', elapsed, 'Initialized SOC dashboard')
       } catch (err: any) {
         console.error('Initialization error:', err)
-        setErrorMsg('Could not connect to SENTINEL AI backend. Please verify FastAPI is running on port 8000.')
+        setErrorMsg(err.message || 'Could not connect to SENTINEL AI backend. Please verify your connection.')
         addAuditRecord('SystemInit', 'Backend Connection', 'failed', 0, err.message)
       } finally {
         setLoading(false)
