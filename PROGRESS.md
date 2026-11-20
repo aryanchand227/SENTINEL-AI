@@ -35,6 +35,7 @@
 - [x] Phase 7 — Supabase PostgreSQL integration & database verification
 - [x] Phase 8 — Groq Cloud LLM integration with LangGraph and resilient fallback
 - [x] Phase 9 — Frontend Integration & Full SOC Dashboard (7 modular views, live SQS query & report integration)
+- [x] Phase 10 — Production Cloud Deployment (Render Web Service + Vercel Frontend + Supabase PostgreSQL + Groq Cloud LLM)
 
 ## Files created or modified
 
@@ -119,4 +120,9 @@
 | `mypy backend/app` | 2026-11-20T16:04Z | 0 | Success: no issues found in 59 source files | TYPES |
 
 ## Operational Status
-The SENTINEL AI platform is fully implemented, verified, and ready for deployment and evaluation.
+The SENTINEL AI platform is fully deployed, verified, and operational in production:
+- **Backend:** Render Web Service (`https://sentinel-ai-lsoj.onrender.com`)
+- **Database:** Supabase Cloud PostgreSQL (Session Pooler, port 5432)
+- **AI Engine:** Groq Cloud LLM (`openai/gpt-oss-20b` via LangGraph multi-agent workflow)
+- **Frontend:** Vercel Production Deployment (React 19 + TypeScript SOC Dashboard)
+- **SIEM Telemetry:** Synthetic Provider (94 canonical events across 10 Appendix B scenarios)
