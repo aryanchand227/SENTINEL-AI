@@ -23,11 +23,13 @@ Configure these variables in your **Render Dashboard → Your Web Service → En
 | `DATABASE_URL` | **Yes** | `sqlite+aiosqlite:///./sentinel_dev.db` | `postgresql+asyncpg://postgres:[PASSWORD]@[HOST]:[PORT]/postgres` | Async database connection URL pointing to Supabase PostgreSQL. |
 | `SIEM_PROVIDER` | **Yes** | `synthetic` | `synthetic` | Active SIEM provider: `synthetic`, `wazuh`, or `elasticsearch`. |
 | `SENTINEL_DATA_MODE` | **Yes** | `synthetic` | `synthetic` | Data label mode: `synthetic` or `live`. Must match `synthetic` for demo. |
-| `LLM_PROVIDER` | No | `cloud` | `cloud` | LLM runtime adapter. |
-| `LLM_MODEL` | No | `""` | `gpt-4o-mini` | Model identifier (e.g. `gpt-4o-mini`, `gemini-1.5-flash`). |
-| `LLM_API_KEY` | No | `""` | `sk-...` | Secret API key for cloud LLM. If blank, offline fallback is used. |
+| `LLM_PROVIDER` | No | `cloud` | `groq` | LLM runtime adapter: `groq`, `cloud`, or `synthetic`. |
+| `GROQ_API_KEY` | Conditional | `""` | `gsk_...` | Groq Cloud API key. Required when `LLM_PROVIDER=groq`. |
+| `GROQ_MODEL` | No | `openai/gpt-oss-20b` | `openai/gpt-oss-20b` | Groq model identifier (e.g. `openai/gpt-oss-20b`, `llama-3.3-70b-versatile`). |
+| `LLM_API_KEY` | No | `""` | `sk-...` | Secret API key for generic cloud LLM. Automatically recognized as fallback for Groq if starts with `gsk_`. |
 | `LLM_BASE_URL` | No | `""` | `https://api.openai.com/v1` | Base URL for OpenAI-compatible completions. |
-| `LLM_TIMEOUT_SECONDS` | No | `30` | `30` | Timeout threshold for LLM requests. |
+| `LLM_TIMEOUT_SECONDS` | No | `30` | `30` | Timeout threshold for LLM requests in seconds. |
+| `LLM_MAX_RETRIES` | No | `2` | `2` | Maximum retry attempts for transient API failures. |
 | `MAX_QUERY_WINDOW_HOURS` | No | `168` | `168` | Upper bound for time range queries (168h = 7 days). |
 | `MAX_QUERY_PAGE_SIZE` | No | `500` | `500` | Maximum event records returned in a single query. |
 | `MAX_AGGREGATION_BUCKETS` | No | `100` | `100` | Maximum aggregation buckets allowed in query plan. |

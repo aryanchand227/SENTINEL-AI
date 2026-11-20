@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend.app.agents.state import InvestigationState
+from backend.app.nlp.llm_client import LLMClient
 
 
 async def synthesize_response_node(state: InvestigationState) -> dict[str, Any]:
@@ -53,6 +54,37 @@ async def synthesize_response_node(state: InvestigationState) -> dict[str, Any]:
     lines.append(
         f"Retrieved **{len(events)}** normalized security events via provider `{provider_name}`."
     )
+
+    # Optional executive briefing narrative from Groq
+    llm_client = LLMClient()
+    ai_narrative: str | None = None
+    if llm_client.is_configured:
+        r_sev = risk_assessment.severity.upper() if risk_assessment else "UNKNOWN"
+        r_score = risk_assessment.score if risk_assessment else 0
+        r_drivers = ", ".join(risk_assessment.factors_increased if risk_assessment else [])
+        c_patterns = ", ".join([f"{c.rule_id}: {c.observed_relationship}" for c in correlations])
+
+        prompt = (
+            f"You are SENTINEL AI, an expert SOC Analyst assistant. "
+            f"Provide a concise, 2-sentence executive threat briefing summarizing this:\n"
+            f"- Events retrieved: {len(events)} (provider: {provider_name})\n"
+            f"- Risk level: {r_sev} (Score: {r_score}/100)\n"
+            f"- Risk drivers: {r_drivers}\n"
+            f"- Correlated patterns: {c_patterns}\n"
+            f"STRICT INSTRUCTIONS: Base statements strictly on the provided evidence facts. "
+            f"Do NOT invent new IPs, usernames, or attack vectors."
+        )
+        ai_narrative = await llm_client.generate_text(
+            prompt,
+            system_prompt=(
+                "You are SENTINEL AI, a disciplined SOC assistant. "
+                "Be direct, authoritative, and fact-bound."
+            ),
+        )
+        if ai_narrative:
+            lines.append("")
+            lines.append(f"**Analyst Assessment:** {ai_narrative.strip()}")
+
     lines.append("")
 
     # 3. Risk Assessment Summary

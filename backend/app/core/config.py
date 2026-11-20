@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 30
     llm_max_retries: int = 2
 
+    # --- Groq ---
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-20b"
+
     # --- Query Safety ---
     max_query_window_hours: int = 168
     max_query_page_size: int = 500
@@ -111,6 +115,30 @@ class Settings(BaseSettings):
 
     def requires_wazuh(self) -> bool:
         return self.siem_provider == SiemProvider.WAZUH
+
+    @property
+    def effective_groq_api_key(self) -> str:
+        """Resolve Groq API key from GROQ_API_KEY or LLM_API_KEY."""
+        if self.groq_api_key and self.groq_api_key != "your_actual_groq_api_key":
+            return self.groq_api_key
+        if self.llm_api_key and (
+            self.llm_api_key.startswith("gsk_") or self.llm_provider.lower() == "groq"
+        ):
+            return self.llm_api_key
+        return ""
+
+    @property
+    def effective_groq_model(self) -> str:
+        """Resolve Groq model name."""
+        return self.groq_model or self.llm_model or "openai/gpt-oss-20b"
+
+    def is_groq_configured(self) -> bool:
+        """Check if Groq provider is enabled with an active API key."""
+        return (
+            self.llm_provider.lower() == "groq"
+            and bool(self.effective_groq_api_key)
+            and self.effective_groq_api_key != "your_actual_groq_api_key"
+        )
 
 
 @lru_cache

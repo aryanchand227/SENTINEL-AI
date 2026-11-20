@@ -14,6 +14,17 @@ from backend.app.agents.state import (
     InvestigationState,
 )
 from backend.app.nlp.intent_planner import IntentPlanner, InvestigationContext
+from backend.app.nlp.llm_client import LLMClient
+from pydantic import BaseModel, Field
+
+
+class LLMIntentAnalysis(BaseModel):
+    """Structured analyst inquiry parsing from Groq/LLM."""
+
+    refined_intent: str
+    target_users: list[str] = Field(default_factory=list)
+    source_ips: list[str] = Field(default_factory=list)
+    host_names: list[str] = Field(default_factory=list)
 
 
 async def plan_intent_node(state: InvestigationState) -> dict[str, Any]:
@@ -33,8 +44,30 @@ async def plan_intent_node(state: InvestigationState) -> dict[str, Any]:
             prior_evidence_ids=resolved_context.prior_evidence_ids,
         )
 
+    # 1. Deterministic baseline planning
     planner = IntentPlanner()
     sqs, intent_summary = planner.plan_query(user_query, planner_ctx)
+
+    # 2. Optional LLM Intent & Entity Enrichment via Groq
+    llm_client = LLMClient()
+    if llm_client.is_configured:
+        prompt = (
+            f"Analyze this security investigation inquiry:\n"
+            f"Inquiry: \"{user_query}\"\n"
+            f"Known context accounts: {planner_ctx.target_accounts if planner_ctx else []}\n"
+            f"Extract the analytical intent and any entities (usernames, IPs, hosts) mentioned."
+        )
+        llm_analysis = await llm_client.generate_structured(
+            prompt=prompt,
+            response_model=LLMIntentAnalysis,
+            system_prompt=(
+                "You are SENTINEL AI's investigation query planner. "
+                "Extract query intent and specific entities strictly from the user's inquiry."
+            ),
+        )
+        if llm_analysis and llm_analysis.refined_intent:
+            intent_summary = f"{intent_summary} (Groq: {llm_analysis.refined_intent})"
+
     # Ensure provider is correctly set
     if provider_name in ("synthetic", "elasticsearch", "wazuh"):
         sqs.provider = cast(Literal["synthetic", "elasticsearch", "wazuh"], provider_name)

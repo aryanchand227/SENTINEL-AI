@@ -16,6 +16,7 @@ from backend.app.agents.state import (
 from backend.app.investigation.correlation import CorrelationEngine
 from backend.app.investigation.mitre import MitreMapper
 from backend.app.investigation.risk import RiskEngine
+from backend.app.nlp.llm_client import LLMClient
 
 
 async def analyze_events_node(state: InvestigationState) -> dict[str, Any]:
@@ -186,6 +187,26 @@ async def analyze_events_node(state: InvestigationState) -> dict[str, Any]:
                 limitations=[],
             ),
         )
+
+    # 5. Optional finding explanation enrichment via Groq
+    llm_client = LLMClient()
+    if llm_client.is_configured and findings:
+        target_finding = findings[0]
+        prompt = (
+            f"Provide a 1-sentence analytical explanation for this SOC finding:\n"
+            f"Title: {target_finding.title}\n"
+            f"Observed: {target_finding.description}\n"
+            f"Severity: {target_finding.severity}\n"
+            f"Constraint: Base commentary strictly on the observation. Do not invent facts."
+        )
+        ai_note = await llm_client.generate_text(
+            prompt,
+            system_prompt="You are SENTINEL AI, an evidence-first threat analyst assistant.",
+        )
+        if ai_note:
+            target_finding.description = (
+                f"{target_finding.description} [Analyst Note: {ai_note.strip()}]"
+            )
 
     return {
         "correlations": correlations,
