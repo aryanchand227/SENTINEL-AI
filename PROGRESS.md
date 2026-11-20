@@ -34,6 +34,7 @@
 - [x] Phase 6 — Adversarial security tests, multi-stage Dockerfiles & Docker Compose
 - [x] Phase 7 — Supabase PostgreSQL integration & database verification
 - [x] Phase 8 — Groq Cloud LLM integration with LangGraph and resilient fallback
+- [x] Phase 9 — Frontend Integration & Full SOC Dashboard (7 modular views, live SQS query & report integration)
 
 ## Files created or modified
 
@@ -79,6 +80,11 @@
 | `GROQ_INTEGRATION_REPORT.md` | Verification ledger & integration report for Groq Cloud LLM |
 | `backend/tests/unit/test_groq_integration.py` | 13 test cases for Groq config, mocked inference, LangGraph, and error resilience |
 | `DEPLOYMENT_ENV_TEMPLATE.md` | Production environment template with Groq & Supabase configuration |
+| `FRONTEND_AUDIT_REPORT.md` | Comprehensive architectural and functional audit of the React frontend |
+| `FRONTEND_API_MAPPING.md` | Complete contract mapping of frontend features to FastAPI endpoints |
+| `PHASE_6_FRONTEND_VALIDATION_REPORT.md` | End-to-end verification report for all 7 SOC dashboard modules |
+| `scripts/verify_frontend_integration.py` | Standalone end-to-end live API verification runner for all frontend endpoints |
+| `frontend/src/components/` | Modular SOC components (Overview, Chat, Explorer, Workspace, Threats, Reports, Audit) |
 
 ## Architecture decisions
 
@@ -105,9 +111,12 @@
 | `python scripts/verify_live_api.py` | 2026-11-16T17:03Z | 0 | Live server auth, turns 1-2, PDF & CSV download verified | E2E LIVE |
 | `alembic upgrade head` | 2026-11-16T13:27Z | 0 | Successfully upgraded to head `7dc240726238` | PERSISTENCE |
 | `pytest backend/tests/unit/test_groq_integration.py -v` | 2026-11-20T15:00Z | 0 | 13/13 passed (Groq client, LangGraph, fallback resilience) | GROQ-LLM |
-| `pytest backend/tests/ -v` | 2026-11-20T15:10Z | 0 | **134 passed** (100% test pass rate across all suites) | FULL-SUITE |
-| `ruff check backend/` | 2026-11-20T15:15Z | 0 | All checks passed (0 lint errors) | LINT |
-| `mypy backend/app` | 2026-11-20T15:16Z | 0 | Success: no issues found in 59 source files | TYPES |
+| `cd frontend && npm run lint` | 2026-11-20T16:03Z | 0 | 0 warnings, 0 errors across 15 files | FRONTEND-LINT |
+| `cd frontend && npm run build` | 2026-11-20T16:03Z | 0 | Vite production build clean in 1.98s | FRONTEND-BUILD |
+| `python scripts/verify_frontend_integration.py` | 2026-11-20T15:58Z | 0 | Live server auth, turns, SQS query, PDF/JSON/CSV verified | FRONTEND-E2E |
+| `pytest backend/tests/ -v` | 2026-11-20T16:02Z | 0 | **134 passed** (100% test pass rate across all suites) | FULL-SUITE |
+| `ruff check backend/ scripts/` | 2026-11-20T16:04Z | 0 | All checks passed (0 lint errors) | LINT |
+| `mypy backend/app` | 2026-11-20T16:04Z | 0 | Success: no issues found in 59 source files | TYPES |
 
 ## Operational Status
 The SENTINEL AI platform is fully implemented, verified, and ready for deployment and evaluation.

@@ -1,41 +1,113 @@
 import type {
+  AuthTokenResponse,
   ChatTurnResponse,
   Conversation,
+  DatabaseHealth,
   MessageItem,
   ProviderStatus,
+  QueryExecuteResponse,
+  QueryPreviewResponse,
   ReportItem,
+  SystemReadiness,
+  UserProfile,
 } from '../types'
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL || ''}/api/v1`
 
-export async function fetchProviderStatus(): Promise<ProviderStatus> {
-  const res = await fetch(`${API_BASE}/providers/status`)
-  if (!res.ok) throw new Error(`Failed to fetch provider status: ${res.statusText}`)
-  return res.json()
+// --- Token Management ---
+const TOKEN_KEY = 'sentinel_auth_token'
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-export async function createConversation(title = 'New Investigation'): Promise<Conversation> {
-  const res = await fetch(`${API_BASE}/conversations`, {
+export function setAuthToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+// --- Authorized Fetch Helper ---
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_BASE}${endpoint}`
+  const headers = new Headers(options.headers || {})
+
+  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const token = getAuthToken()
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(url, { ...options, headers })
+
+  if (!response.ok) {
+    let errorDetail = response.statusText
+    try {
+      const errorData = await response.json()
+      if (errorData.detail) {
+        errorDetail = typeof errorData.detail === 'string'
+          ? errorData.detail
+          : JSON.stringify(errorData.detail)
+      }
+    } catch {
+      // Non-JSON error body
+    }
+    throw new Error(errorDetail || `HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
+// --- Health Probes ---
+export async function fetchReadiness(): Promise<SystemReadiness> {
+  return apiFetch<SystemReadiness>('/health/ready')
+}
+
+export async function fetchDatabaseHealth(): Promise<DatabaseHealth> {
+  return apiFetch<DatabaseHealth>('/health/db')
+}
+
+export async function fetchProviderStatus(): Promise<ProviderStatus> {
+  return apiFetch<ProviderStatus>('/providers/status')
+}
+
+// --- Authentication ---
+export async function login(email: string, password: string): Promise<AuthTokenResponse> {
+  const res = await apiFetch<AuthTokenResponse>('/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, provider: 'synthetic' }),
+    body: JSON.stringify({ email, password }),
   })
-  if (!res.ok) throw new Error(`Failed to create conversation: ${res.statusText}`)
-  return res.json()
+  if (res.access_token) {
+    setAuthToken(res.access_token)
+  }
+  return res
+}
+
+export async function fetchCurrentUser(): Promise<UserProfile> {
+  return apiFetch<UserProfile>('/auth/me')
+}
+
+// --- Conversations & Chat ---
+export async function createConversation(title = 'New Investigation'): Promise<Conversation> {
+  return apiFetch<Conversation>('/conversations', {
+    method: 'POST',
+    body: JSON.stringify({ title, provider: 'synthetic', data_mode: 'synthetic' }),
+  })
 }
 
 export async function listConversations(): Promise<Conversation[]> {
-  const res = await fetch(`${API_BASE}/conversations`)
-  if (!res.ok) throw new Error(`Failed to list conversations: ${res.statusText}`)
-  return res.json()
+  return apiFetch<Conversation[]>('/conversations')
 }
 
 export async function getConversationDetail(
   id: string
 ): Promise<{ conversation: Conversation; messages: MessageItem[] }> {
-  const res = await fetch(`${API_BASE}/conversations/${id}`)
-  if (!res.ok) throw new Error(`Failed to get conversation: ${res.statusText}`)
-  return res.json()
+  return apiFetch<{ conversation: Conversation; messages: MessageItem[] }>(`/conversations/${id}`)
 }
 
 export async function sendChatMessage(
@@ -43,35 +115,79 @@ export async function sendChatMessage(
   message: string,
   investigationId?: string
 ): Promise<ChatTurnResponse> {
-  const res = await fetch(`${API_BASE}/chat`, {
+  return apiFetch<ChatTurnResponse>('/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       conversation_id: conversationId,
       message,
       investigation_id: investigationId,
     }),
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `Chat request failed with ${res.status}`)
-  }
-  return res.json()
 }
 
+// --- Query Execution & Event Explorer ---
+export interface SqsQueryOptions {
+  timeStart?: string
+  timeEnd?: string
+  filters?: Array<{ field: string; operator: string; value: any }>
+  aggregations?: Array<{ type: string; field: string; size?: number; interval?: string }>
+  sortField?: string
+  sortOrder?: 'asc' | 'desc'
+  pageSize?: number
+  intent?: string
+}
+
+export async function executeSqsQuery(
+  options: SqsQueryOptions = {},
+  investigationId?: string
+): Promise<QueryExecuteResponse> {
+  const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  const spec = {
+    provider: 'synthetic',
+    time_range: {
+      start: options.timeStart || sevenDaysAgo.toISOString(),
+      end: options.timeEnd || now.toISOString(),
+    },
+    filters: options.filters || [],
+    aggregations: options.aggregations || [],
+    sort_field: options.sortField || '@timestamp',
+    sort_order: options.sortOrder || 'desc',
+    page_size: options.pageSize || 100,
+    intent: options.intent || 'SOC Security Telemetry Query',
+  }
+
+  return apiFetch<QueryExecuteResponse>('/queries/execute', {
+    method: 'POST',
+    body: JSON.stringify({ spec, investigation_id: investigationId }),
+  })
+}
+
+export async function previewSqsQuery(spec: any): Promise<QueryPreviewResponse> {
+  return apiFetch<QueryPreviewResponse>('/queries/preview', {
+    method: 'POST',
+    body: JSON.stringify({ spec }),
+  })
+}
+
+// --- Reports ---
 export async function generateReport(
   investigationId: string,
   format: 'pdf' | 'json' | 'csv',
   title = 'Incident Threat Report'
 ): Promise<ReportItem> {
-  const res = await fetch(`${API_BASE}/investigations/${investigationId}/reports`, {
+  return apiFetch<ReportItem>(`/investigations/${investigationId}/reports`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ format, title }),
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `Report generation failed: ${res.statusText}`)
-  }
-  return res.json()
+}
+
+export async function fetchReportMetadata(reportId: string): Promise<ReportItem> {
+  return apiFetch<ReportItem>(`/reports/${reportId}`)
+}
+
+export function getReportDownloadUrl(downloadPath: string): string {
+  if (downloadPath.startsWith('http')) return downloadPath
+  return `${import.meta.env.VITE_API_BASE_URL || ''}${downloadPath}`
 }
