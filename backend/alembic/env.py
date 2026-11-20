@@ -17,9 +17,9 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Inject database URL from application settings
+# Inject database URL from application settings (escape % for configparser interpolation)
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
