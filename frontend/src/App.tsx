@@ -159,11 +159,23 @@ export default function App() {
 
   // Handle Chat Message Execution
   const handleSendMessage = async (text: string) => {
-    if (!text.trim() || !conversation || loading) return
+    if (!text.trim() || loading) return
 
     setLoading(true)
     setErrorMsg(null)
     const t0 = performance.now()
+
+    let activeConv = conversation
+    if (!activeConv) {
+      try {
+        activeConv = await createConversation('SOC Incident Investigation')
+        setConversation(activeConv)
+      } catch (convErr: any) {
+        setErrorMsg('Failed to initialize conversation: ' + (convErr.message || String(convErr)))
+        setLoading(false)
+        return
+      }
+    }
 
     // Optimistically add user message
     const tempUserMsg: MessageItem = {
@@ -175,14 +187,14 @@ export default function App() {
     setMessages((prev) => [...prev, tempUserMsg])
 
     try {
-      const res = await sendChatMessage(conversation.id, text, activeInvestigationId || undefined)
+      const res = await sendChatMessage(activeConv.id, text, activeInvestigationId || undefined)
 
       setActiveInvestigationId(res.investigation_id)
       setActiveFindings(res.findings)
       setActiveEvidenceIds(res.evidence_ids)
 
       // Refresh message history from server for full metadata
-      const detail = await getConversationDetail(conversation.id)
+      const detail = await getConversationDetail(activeConv.id)
       setMessages(detail.messages)
 
       const elapsed = Math.round(performance.now() - t0)
@@ -195,7 +207,7 @@ export default function App() {
       )
     } catch (err: any) {
       setErrorMsg(err.message || 'Error executing investigation query')
-      addAuditRecord('ChatTurnExecution', conversation.id, 'failed', Math.round(performance.now() - t0), err.message)
+      addAuditRecord('ChatTurnExecution', activeConv.id, 'failed', Math.round(performance.now() - t0), err.message)
     } finally {
       setLoading(false)
     }
