@@ -12,7 +12,7 @@ import type {
   UserProfile,
 } from '../types'
 
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL || ''}/api/v1`
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://sentinel-ai-lsoj.onrender.com'}/api/v1`
 
 // --- Token Management ---
 const TOKEN_KEY = 'sentinel_auth_token'
@@ -189,5 +189,5 @@ export async function fetchReportMetadata(reportId: string): Promise<ReportItem>
 
 export function getReportDownloadUrl(downloadPath: string): string {
   if (downloadPath.startsWith('http')) return downloadPath
-  return `${import.meta.env.VITE_API_BASE_URL || ''}${downloadPath}`
+  return `${import.meta.env.VITE_API_BASE_URL || 'https://sentinel-ai-lsoj.onrender.com'}${downloadPath}`
 }
