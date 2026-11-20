@@ -1,0 +1,43 @@
+# SENTINEL AI — Render Blueprint Specification
+# Deploys the FastAPI + LangGraph backend on Render Web Service
+services:
+  - type: web
+    name: sentinel-ai-backend
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: SENTINEL_AI
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 60
+      - key: SIEM_PROVIDER
+        value: synthetic
+      - key: SENTINEL_DATA_MODE
+        value: synthetic
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: LLM_TIMEOUT_SECONDS
+        value: 30
+      - key: LLM_MAX_RETRIES
+        value: 2
+      - key: DATABASE_URL
+        sync: false # Set to your Supabase PostgreSQL pooler URL
+      - key: GROQ_API_KEY
+        sync: false # Set to your gsk_... Groq API key
+      - key: CORS_ORIGINS
+        sync: false # Set to your Vercel URL (e.g. https://your-project.vercel.app)
