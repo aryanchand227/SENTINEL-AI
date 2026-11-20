@@ -3,9 +3,12 @@ SENTINEL AI — Health check endpoints.
 
 GET /api/v1/health/live   — Process liveness (always 200 if running)
 GET /api/v1/health/ready  — Dependency readiness check
+GET /api/v1/health/db     — Dedicated database health check with latency
 """
 
 from __future__ import annotations
+
+import time
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -27,6 +30,13 @@ class ReadinessResponse(BaseModel):
     provider: str
     data_mode: str
     checks: dict[str, str]
+
+
+class DatabaseHealthResponse(BaseModel):
+    status: str  # "healthy" or "unhealthy"
+    database: str
+    latency_ms: float
+    error: str | None = None
 
 
 @router.get("/live", response_model=LivenessResponse)
@@ -64,3 +74,34 @@ async def readiness() -> ReadinessResponse:
         data_mode=settings.sentinel_data_mode.value,
         checks=checks,
     )
+
+
+@router.get("/db", response_model=DatabaseHealthResponse)
+async def database_health() -> DatabaseHealthResponse:
+    """Explicit database health probe verifying connectivity and latency."""
+    t0 = time.perf_counter()
+    try:
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+        return DatabaseHealthResponse(
+            status="healthy",
+            database=engine.name,
+            latency_ms=latency_ms,
+            error=None,
+        )
+    except Exception as e:
+        latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+        engine_name = "unknown"
+        try:
+            engine_name = get_engine().name
+        except Exception:
+            pass
+        return DatabaseHealthResponse(
+            status="unhealthy",
+            database=engine_name,
+            latency_ms=latency_ms,
+            error=str(e),
+        )
+
